@@ -1,0 +1,396 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# OPTIONS -Wall #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE DeriveGeneric #-}</span><span>
+</span><span id="line-3"></span><span>
+</span><span id="line-4"></span><span class="hs-comment">{-|
+Module      : GameActions
+Description : Funkcje dotycz&#261;ce u&#380;ycia przedmiot&#243;w. 
+
+Ten modu&#322; zawiera definicje funkcji obs&#322;uguj&#261;cyh akcje zwi&#261;zane z wykorzystaniem przedmiot&#243;w.
+Dany przedmiot mo&#380;e by&#263; u&#380;yty tylko je&#347;li zosta&#322;a dla niego zdefiniowana akcja typu 'GameAction' o nazwie 'ActionName'.
+-}</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">GameActions</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map.Strict</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">M</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.State</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">System.FilePath</span></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="GameState.html"><span class="hs-identifier">GameState</span></a></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="RoomParser.html"><span class="hs-identifier">RoomParser</span></a></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Moving.html"><span class="hs-identifier">Moving</span></a></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Items.html"><span class="hs-identifier">Items</span></a></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- | Typ do zarz&#261;dzania akcjami dla przedmiot&#243;w. </span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- Jest to mapa, kt&#243;rej kluczami s&#261; typy 'ActionName' a warto&#347;ciami 'GameAction. </span><span>
+</span><span id="line-30"></span><span class="hs-keyword">type</span><span> </span><span id="ActionsMap"><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-var">ActionsMap</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">M.Map</span></span><span> </span><span class="annot"><a href="GameActions.html#ActionName"><span class="hs-identifier hs-type">ActionName</span></a></span><span> </span><span class="annot"><a href="GameActions.html#GameAction"><span class="hs-identifier hs-type">GameAction</span></a></span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- | Alias dla nazwy akcji. </span><span>
+</span><span id="line-33"></span><span class="hs-keyword">type</span><span> </span><span id="ActionName"><span class="annot"><a href="GameActions.html#ActionName"><span class="hs-identifier hs-var">ActionName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- | Alias dla wiadomo&#347;ci w przypadku sukcesu akcji. </span><span>
+</span><span id="line-36"></span><span class="hs-keyword">type</span><span> </span><span id="ActionMessage"><span class="annot"><a href="GameActions.html#ActionMessage"><span class="hs-identifier hs-var">ActionMessage</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span class="hs-comment">-- | Alias dla wej&#347;cia od u&#380;ytkownika. </span><span>
+</span><span id="line-39"></span><span class="hs-keyword">type</span><span> </span><span id="UserActionInput"><span class="annot"><a href="GameActions.html#UserActionInput"><span class="hs-identifier hs-var">UserActionInput</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="hs-comment">-- | Typ danych reprezentuj&#261;cy rodzaje akcji zwi&#261;zanych z przedmiotami.</span><span>
+</span><span id="line-42"></span><span id="local-6989586621679123611"><span id="local-6989586621679123612"></span></span><span class="hs-keyword">data</span><span> </span><span id="ActionType"><span class="annot"><a href="GameActions.html#ActionType"><span class="hs-identifier hs-var">ActionType</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span>
+</span><span id="line-43"></span><span>    </span><span id="AddItem"><span class="annot"><a href="GameActions.html#AddItem"><span class="hs-identifier hs-var">AddItem</span></a></span></span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-comment">-- ^ dodanie przedmiotu</span><span>
+</span><span id="line-44"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="RemoveItem"><span class="annot"><a href="GameActions.html#RemoveItem"><span class="hs-identifier hs-var">RemoveItem</span></a></span></span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-comment">-- ^ usuni&#281;cie przedmiotu</span><span>
+</span><span id="line-45"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="ReplaceItem"><span class="annot"><a href="GameActions.html#ReplaceItem"><span class="hs-identifier hs-var">ReplaceItem</span></a></span></span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-comment">-- ^ zamienienie przedmiotu</span><span>
+</span><span id="line-46"></span><span>    </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(forall x. ActionType -&gt; Rep ActionType x)
+-&gt; (forall x. Rep ActionType x -&gt; ActionType) -&gt; Generic ActionType
+forall x. Rep ActionType x -&gt; ActionType
+forall x. ActionType -&gt; Rep ActionType x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep ActionType x -&gt; ActionType
+$cfrom :: forall x. ActionType -&gt; Rep ActionType x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- | Typ danych reprezentuj&#261;cy rodzaje wynik&#243;w akcji zwi&#261;zanych z przedmiotami.</span><span>
+</span><span id="line-49"></span><span id="local-6989586621679123602"><span id="local-6989586621679123603"></span></span><span class="hs-keyword">data</span><span> </span><span id="ActionResult"><span class="annot"><a href="GameActions.html#ActionResult"><span class="hs-identifier hs-var">ActionResult</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span>
+</span><span id="line-50"></span><span>    </span><span id="ChangeCurrentRoom"><span class="annot"><a href="GameActions.html#ChangeCurrentRoom"><span class="hs-identifier hs-var">ChangeCurrentRoom</span></a></span></span><span> </span><span class="annot"><a href="RoomParser.html#RoomName"><span class="hs-identifier hs-type">RoomName</span></a></span><span> </span><span class="hs-comment">-- ^ zmiana aktualnego pokoju na inny</span><span>
+</span><span id="line-51"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="ChangeInventory"><span class="annot"><a href="GameActions.html#ChangeInventory"><span class="hs-identifier hs-var">ChangeInventory</span></a></span></span><span> </span><span class="annot"><a href="GameActions.html#ActionType"><span class="hs-identifier hs-type">ActionType</span></a></span><span> </span><span class="hs-comment">-- ^ zmiana posiadanych przedmiot&#243;w</span><span>
+</span><span id="line-52"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="ChangeRoomInventory"><span class="annot"><a href="GameActions.html#ChangeRoomInventory"><span class="hs-identifier hs-var">ChangeRoomInventory</span></a></span></span><span> </span><span class="annot"><a href="GameActions.html#ActionType"><span class="hs-identifier hs-type">ActionType</span></a></span><span> </span><span class="hs-comment">-- ^ zmiana przedmiot&#243;w znajduj&#261;cyh si&#281; w aktualnym pokoju</span><span>
+</span><span id="line-53"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="DoNothing"><span class="annot"><a href="GameActions.html#DoNothing"><span class="hs-identifier hs-var">DoNothing</span></a></span></span><span> </span><span class="hs-comment">-- ^ brak zmiany &#347;wiata gry</span><span>
+</span><span id="line-54"></span><span>    </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(forall x. ActionResult -&gt; Rep ActionResult x)
+-&gt; (forall x. Rep ActionResult x -&gt; ActionResult)
+-&gt; Generic ActionResult
+forall x. Rep ActionResult x -&gt; ActionResult
+forall x. ActionResult -&gt; Rep ActionResult x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep ActionResult x -&gt; ActionResult
+$cfrom :: forall x. ActionResult -&gt; Rep ActionResult x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- | Typ danych reprezentuj&#261;cy warunki pomy&#347;lnego wykonania akcji. </span><span>
+</span><span id="line-57"></span><span id="local-6989586621679123594"><span id="local-6989586621679123595"></span></span><span class="hs-keyword">data</span><span> </span><span id="ActionConditions"><span class="annot"><a href="GameActions.html#ActionConditions"><span class="hs-identifier hs-var">ActionConditions</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="ActionConditions"><span class="annot"><a href="GameActions.html#ActionConditions"><span class="hs-identifier hs-var">ActionConditions</span></a></span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-58"></span><span>    </span><span id="roomName"><span class="annot"><span class="annottext">ActionConditions -&gt; RoomName
+</span><a href="GameActions.html#roomName"><span class="hs-identifier hs-var hs-var">roomName</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#RoomName"><span class="hs-identifier hs-type">RoomName</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-comment">-- ^ nazwa pokoju w kt&#243;rym akcja musi si&#281; odby&#263;</span><span>
+</span><span id="line-59"></span><span>    </span><span id="itemsInRoom"><span class="annot"><span class="annottext">ActionConditions -&gt; [RoomName]
+</span><a href="GameActions.html#itemsInRoom"><span class="hs-identifier hs-var hs-var">itemsInRoom</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-comment">-- ^ lista przedmiot&#243;w znajduj&#261;cych si&#281; w aktualnym pokoju</span><span>
+</span><span id="line-60"></span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(forall x. ActionConditions -&gt; Rep ActionConditions x)
+-&gt; (forall x. Rep ActionConditions x -&gt; ActionConditions)
+-&gt; Generic ActionConditions
+forall x. Rep ActionConditions x -&gt; ActionConditions
+forall x. ActionConditions -&gt; Rep ActionConditions x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep ActionConditions x -&gt; ActionConditions
+$cfrom :: forall x. ActionConditions -&gt; Rep ActionConditions x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span class="hs-comment">-- | Typ danych reprezentuj&#261;cy akcj&#281; zwi&#261;zan&#261; z przedmiotem. </span><span>
+</span><span id="line-63"></span><span id="local-6989586621679123587"><span id="local-6989586621679123588"></span></span><span class="hs-keyword">data</span><span> </span><span id="GameAction"><span class="annot"><a href="GameActions.html#GameAction"><span class="hs-identifier hs-var">GameAction</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="GameAction"><span class="annot"><a href="GameActions.html#GameAction"><span class="hs-identifier hs-var">GameAction</span></a></span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-64"></span><span>    </span><span id="itemName"><span class="annot"><span class="annottext">GameAction -&gt; RoomName
+</span><a href="GameActions.html#itemName"><span class="hs-identifier hs-var hs-var">itemName</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-comment">-- ^ nazwa przedmiotu kt&#243;rego dotyczy akcja</span><span>
+</span><span id="line-65"></span><span>    </span><span id="message"><span class="annot"><span class="annottext">GameAction -&gt; ActionMessage
+</span><a href="GameActions.html#message"><span class="hs-identifier hs-var hs-var">message</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#ActionMessage"><span class="hs-identifier hs-type">ActionMessage</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-comment">-- ^ wiadomo&#347;&#263; wy&#347;wietlania po pozytywnym wykonaniu akcji</span><span>
+</span><span id="line-66"></span><span>    </span><span id="conditions"><span class="annot"><span class="annottext">GameAction -&gt; ActionConditions
+</span><a href="GameActions.html#conditions"><span class="hs-identifier hs-var hs-var">conditions</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#ActionConditions"><span class="hs-identifier hs-type">ActionConditions</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-comment">-- ^ warunki niezb&#281;dne do pozytywnego wykonania akcji</span><span>
+</span><span id="line-67"></span><span>    </span><span id="actionResult"><span class="annot"><span class="annottext">GameAction -&gt; ActionResult
+</span><a href="GameActions.html#actionResult"><span class="hs-identifier hs-var hs-var">actionResult</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#ActionResult"><span class="hs-identifier hs-type">ActionResult</span></a></span><span> </span><span class="hs-comment">-- ^ wynik dzia&#322;ania akcji </span><span>
+</span><span id="line-68"></span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(forall x. GameAction -&gt; Rep GameAction x)
+-&gt; (forall x. Rep GameAction x -&gt; GameAction) -&gt; Generic GameAction
+forall x. Rep GameAction x -&gt; GameAction
+forall x. GameAction -&gt; Rep GameAction x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep GameAction x -&gt; GameAction
+$cfrom :: forall x. GameAction -&gt; Rep GameAction x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- | Domy&#347;la implementacja FromJSON dla typu ActionType</span><span>
+</span><span id="line-71"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123576"><span id="local-6989586621679123578"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="GameActions.html#ActionType"><span class="hs-identifier hs-type">ActionType</span></a></span></span></span><span>
+</span><span id="line-72"></span><span class="hs-comment">-- | Domy&#347;la implementacja ToJSON dla typu ActionType</span><span>
+</span><span id="line-73"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123567"><span id="local-6989586621679123569"><span id="local-6989586621679123571"><span id="local-6989586621679123573"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="GameActions.html#ActionType"><span class="hs-identifier hs-type">ActionType</span></a></span></span></span></span></span><span> </span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- | Domy&#347;la implementacja FromJSON dla typu ActionResult</span><span>
+</span><span id="line-75"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123562"><span id="local-6989586621679123564"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="GameActions.html#ActionResult"><span class="hs-identifier hs-type">ActionResult</span></a></span></span></span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- | Domy&#347;la implementacja ToJSON dla typu ActionResult</span><span>
+</span><span id="line-77"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123554"><span id="local-6989586621679123556"><span id="local-6989586621679123558"><span id="local-6989586621679123560"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="GameActions.html#ActionResult"><span class="hs-identifier hs-type">ActionResult</span></a></span></span></span></span></span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- | Domy&#347;la implementacja FromJSON dla typu ActionConditions</span><span>
+</span><span id="line-79"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123550"><span id="local-6989586621679123552"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="GameActions.html#ActionConditions"><span class="hs-identifier hs-type">ActionConditions</span></a></span></span></span><span>
+</span><span id="line-80"></span><span class="hs-comment">-- | Domy&#347;la implementacja ToJSON dla typu ActionConditions</span><span>
+</span><span id="line-81"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123542"><span id="local-6989586621679123544"><span id="local-6989586621679123546"><span id="local-6989586621679123548"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="GameActions.html#ActionConditions"><span class="hs-identifier hs-type">ActionConditions</span></a></span></span></span></span></span><span>
+</span><span id="line-82"></span><span class="hs-comment">-- | Domy&#347;la implementacja FromJSON dla typu GameAction</span><span>
+</span><span id="line-83"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123538"><span id="local-6989586621679123540"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="GameActions.html#GameAction"><span class="hs-identifier hs-type">GameAction</span></a></span></span></span><span>
+</span><span id="line-84"></span><span class="hs-comment">-- | Domy&#347;la implementacja ToJSON dla typu GameAction</span><span>
+</span><span id="line-85"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123530"><span id="local-6989586621679123532"><span id="local-6989586621679123534"><span id="local-6989586621679123536"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="GameActions.html#GameAction"><span class="hs-identifier hs-type">GameAction</span></a></span></span></span></span></span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span class="hs-comment">-- | Funkcja przyjmuje wynik akcji 'ActionResult' i w zale&#380;no&#347;ci od jego typu wyw&#322;uje odpowiednie funckje zmieniaj&#261;ce stan gry. </span><span>
+</span><span id="line-88"></span><span class="annot"><a href="GameActions.html#executeActionResult"><span class="hs-identifier hs-type">executeActionResult</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#ActionResult"><span class="hs-identifier hs-type">ActionResult</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span>
+</span><span id="line-89"></span><span id="executeActionResult"><span class="annot"><span class="annottext">executeActionResult :: ActionResult -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="GameActions.html#executeActionResult"><span class="hs-identifier hs-var hs-var">executeActionResult</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#ChangeCurrentRoom"><span class="hs-identifier hs-type">ChangeCurrentRoom</span></a></span><span> </span><span id="local-6989586621679123528"><span class="annot"><span class="annottext">rName :: RoomName
+</span><a href="#local-6989586621679123528"><span class="hs-identifier hs-var">rName</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Moving.html#changeRoom"><span class="hs-identifier hs-var">changeRoom</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123528"><span class="hs-identifier hs-var">rName</span></a></span><span>
+</span><span id="line-90"></span><span class="annot"><a href="GameActions.html#executeActionResult"><span class="hs-identifier hs-var">executeActionResult</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#ChangeInventory"><span class="hs-identifier hs-type">ChangeInventory</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#AddItem"><span class="hs-identifier hs-type">AddItem</span></a></span><span> </span><span id="local-6989586621679123526"><span class="annot"><span class="annottext">item :: RoomName
+</span><a href="#local-6989586621679123526"><span class="hs-identifier hs-var">item</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#addItemToInventory"><span class="hs-identifier hs-var">addItemToInventory</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123526"><span class="hs-identifier hs-var">item</span></a></span><span>
+</span><span id="line-91"></span><span class="annot"><a href="GameActions.html#executeActionResult"><span class="hs-identifier hs-var">executeActionResult</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#ChangeInventory"><span class="hs-identifier hs-type">ChangeInventory</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#RemoveItem"><span class="hs-identifier hs-type">RemoveItem</span></a></span><span> </span><span id="local-6989586621679123524"><span class="annot"><span class="annottext">item :: RoomName
+</span><a href="#local-6989586621679123524"><span class="hs-identifier hs-var">item</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#removeItemFromInventory"><span class="hs-identifier hs-var">removeItemFromInventory</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123524"><span class="hs-identifier hs-var">item</span></a></span><span>
+</span><span id="line-92"></span><span class="annot"><a href="GameActions.html#executeActionResult"><span class="hs-identifier hs-var">executeActionResult</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#ChangeRoomInventory"><span class="hs-identifier hs-type">ChangeRoomInventory</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#AddItem"><span class="hs-identifier hs-type">AddItem</span></a></span><span> </span><span id="local-6989586621679123522"><span class="annot"><span class="annottext">item :: RoomName
+</span><a href="#local-6989586621679123522"><span class="hs-identifier hs-var">item</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#putItemChangeGame"><span class="hs-identifier hs-var">putItemChangeGame</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123522"><span class="hs-identifier hs-var">item</span></a></span><span>
+</span><span id="line-93"></span><span class="annot"><a href="GameActions.html#executeActionResult"><span class="hs-identifier hs-var">executeActionResult</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#ChangeRoomInventory"><span class="hs-identifier hs-type">ChangeRoomInventory</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#RemoveItem"><span class="hs-identifier hs-type">RemoveItem</span></a></span><span> </span><span id="local-6989586621679123520"><span class="annot"><span class="annottext">item :: RoomName
+</span><a href="#local-6989586621679123520"><span class="hs-identifier hs-var">item</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#removeItemFromInventory"><span class="hs-identifier hs-var">removeItemFromInventory</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123520"><span class="hs-identifier hs-var">item</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(AdventureGame -&gt; AdventureGame)
+-&gt; (AdventureGame -&gt; AdventureGame)
+-&gt; AdventureGame
+-&gt; AdventureGame
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#takeItemChangeGame"><span class="hs-identifier hs-var">takeItemChangeGame</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123520"><span class="hs-identifier hs-var">item</span></a></span><span>
+</span><span id="line-94"></span><span class="annot"><a href="GameActions.html#executeActionResult"><span class="hs-identifier hs-var">executeActionResult</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#ChangeInventory"><span class="hs-identifier hs-type">ChangeInventory</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#ReplaceItem"><span class="hs-identifier hs-type">ReplaceItem</span></a></span><span> </span><span id="local-6989586621679123517"><span class="annot"><span class="annottext">itemTake :: RoomName
+</span><a href="#local-6989586621679123517"><span class="hs-identifier hs-var">itemTake</span></a></span></span><span> </span><span id="local-6989586621679123516"><span class="annot"><span class="annottext">itemGive :: RoomName
+</span><a href="#local-6989586621679123516"><span class="hs-identifier hs-var">itemGive</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#addItemToInventory"><span class="hs-identifier hs-var">addItemToInventory</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123516"><span class="hs-identifier hs-var">itemGive</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(AdventureGame -&gt; AdventureGame)
+-&gt; (AdventureGame -&gt; AdventureGame)
+-&gt; AdventureGame
+-&gt; AdventureGame
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#removeItemFromInventory"><span class="hs-identifier hs-var">removeItemFromInventory</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123517"><span class="hs-identifier hs-var">itemTake</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-95"></span><span class="annot"><a href="GameActions.html#executeActionResult"><span class="hs-identifier hs-var">executeActionResult</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#ChangeRoomInventory"><span class="hs-identifier hs-type">ChangeRoomInventory</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameActions.html#ReplaceItem"><span class="hs-identifier hs-type">ReplaceItem</span></a></span><span> </span><span id="local-6989586621679123515"><span class="annot"><span class="annottext">itemTake :: RoomName
+</span><a href="#local-6989586621679123515"><span class="hs-identifier hs-var">itemTake</span></a></span></span><span> </span><span id="local-6989586621679123514"><span class="annot"><span class="annottext">itemGive :: RoomName
+</span><a href="#local-6989586621679123514"><span class="hs-identifier hs-var">itemGive</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#putItemChangeGame"><span class="hs-identifier hs-var">putItemChangeGame</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123514"><span class="hs-identifier hs-var">itemGive</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(AdventureGame -&gt; AdventureGame)
+-&gt; (AdventureGame -&gt; AdventureGame)
+-&gt; AdventureGame
+-&gt; AdventureGame
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#removeItemFromInventory"><span class="hs-identifier hs-var">removeItemFromInventory</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123515"><span class="hs-identifier hs-var">itemTake</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(AdventureGame -&gt; AdventureGame)
+-&gt; (AdventureGame -&gt; AdventureGame)
+-&gt; AdventureGame
+-&gt; AdventureGame
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#takeItemChangeGame"><span class="hs-identifier hs-var">takeItemChangeGame</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123515"><span class="hs-identifier hs-var">itemTake</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-96"></span><span class="annot"><a href="GameActions.html#executeActionResult"><span class="hs-identifier hs-var">executeActionResult</span></a></span><span> </span><span class="annot"><a href="GameActions.html#DoNothing"><span class="hs-identifier hs-type">DoNothing</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">AdventureGame -&gt; AdventureGame
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span class="hs-comment">-- | Funkcja przyjmuje pok&#243;j i list&#281; przedmiot&#243;w. </span><span>
+</span><span id="line-99"></span><span class="hs-comment">-- Zwraca True je&#347;li wszystkie przedmioty z listy znajduj&#261; si&#281; w pokoju. Wpp zwraca False.</span><span>
+</span><span id="line-100"></span><span class="annot"><a href="GameActions.html#doesRoomContainItems"><span class="hs-identifier hs-type">doesRoomContainItems</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-101"></span><span id="doesRoomContainItems"><span class="annot"><span class="annottext">doesRoomContainItems :: Room -&gt; [RoomName] -&gt; Bool
+</span><a href="GameActions.html#doesRoomContainItems"><span class="hs-identifier hs-var hs-var">doesRoomContainItems</span></a></span></span><span> </span><span id="local-6989586621679123511"><span class="annot"><span class="annottext">room :: Room
+</span><a href="#local-6989586621679123511"><span class="hs-identifier hs-var">room</span></a></span></span><span> </span><span id="local-6989586621679123510"><span class="annot"><span class="annottext">wantedItems :: [RoomName]
+</span><a href="#local-6989586621679123510"><span class="hs-identifier hs-var">wantedItems</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[RoomName] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map RoomName RoomName -&gt; [RoomName]
+forall k a. Map k a -&gt; [k]
+</span><span class="hs-identifier hs-var">M.keys</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Room -&gt; Map RoomName RoomName
+</span><a href="RoomParser.html#items"><span class="hs-identifier hs-var hs-var">items</span></a></span><span> </span><span class="annot"><span class="annottext">Room
+</span><a href="#local-6989586621679123511"><span class="hs-identifier hs-var">room</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[RoomName] -&gt; [RoomName] -&gt; [RoomName]
+forall a. Eq a =&gt; [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">\\</span></span><span> </span><span class="annot"><span class="annottext">[RoomName]
+</span><a href="#local-6989586621679123510"><span class="hs-identifier hs-var">wantedItems</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span class="hs-comment">-- | Funkcja przyjmuje warunki typu 'ActionConditions' i sprawdza, czy wszystkie warunki do wykonania akcji s&#261; spe&#322;nione. </span><span>
+</span><span id="line-104"></span><span class="annot"><a href="GameActions.html#checkConditions"><span class="hs-identifier hs-type">checkConditions</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#ActionConditions"><span class="hs-identifier hs-type">ActionConditions</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-105"></span><span id="checkConditions"><span class="annot"><span class="annottext">checkConditions :: ActionConditions -&gt; AdventureGame -&gt; Bool
+</span><a href="GameActions.html#checkConditions"><span class="hs-identifier hs-var hs-var">checkConditions</span></a></span></span><span> </span><span id="local-6989586621679123504"><span class="annot"><span class="annottext">cond :: ActionConditions
+</span><a href="#local-6989586621679123504"><span class="hs-identifier hs-var">cond</span></a></span></span><span> </span><span id="local-6989586621679123503"><span class="annot"><span class="annottext">game :: AdventureGame
+</span><a href="#local-6989586621679123503"><span class="hs-identifier hs-var">game</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679123502"><span class="hs-identifier hs-var">wantedRoom</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679123500"><span class="hs-identifier hs-var">wantedItemsInRoom</span></a></span><span>
+</span><span id="line-106"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-107"></span><span>      </span><span id="local-6989586621679123499"><span class="annot"><span class="annottext">currentRoom :: Room
+</span><a href="#local-6989586621679123499"><span class="hs-identifier hs-var hs-var">currentRoom</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">AdventureGame -&gt; Room
+</span><a href="GameState.html#getCurrentRoom"><span class="hs-identifier hs-var">getCurrentRoom</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123503"><span class="hs-identifier hs-var">game</span></a></span><span>
+</span><span id="line-108"></span><span>      </span><span id="local-6989586621679123502"><span class="annot"><span class="annottext">wantedRoom :: Bool
+</span><a href="#local-6989586621679123502"><span class="hs-identifier hs-var hs-var">wantedRoom</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">AdventureGame -&gt; RoomName
+</span><a href="GameState.html#currentRoomName"><span class="hs-identifier hs-var hs-var">currentRoomName</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123503"><span class="hs-identifier hs-var">game</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; RoomName -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">ActionConditions -&gt; RoomName
+</span><a href="GameActions.html#roomName"><span class="hs-identifier hs-var hs-var">roomName</span></a></span><span> </span><span class="annot"><span class="annottext">ActionConditions
+</span><a href="#local-6989586621679123504"><span class="hs-identifier hs-var">cond</span></a></span><span>
+</span><span id="line-109"></span><span>      </span><span id="local-6989586621679123500"><span class="annot"><span class="annottext">wantedItemsInRoom :: Bool
+</span><a href="#local-6989586621679123500"><span class="hs-identifier hs-var hs-var">wantedItemsInRoom</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Room -&gt; [RoomName] -&gt; Bool
+</span><a href="GameActions.html#doesRoomContainItems"><span class="hs-identifier hs-var">doesRoomContainItems</span></a></span><span> </span><span class="annot"><span class="annottext">Room
+</span><a href="#local-6989586621679123499"><span class="hs-identifier hs-var">currentRoom</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ActionConditions -&gt; [RoomName]
+</span><a href="GameActions.html#itemsInRoom"><span class="hs-identifier hs-var hs-var">itemsInRoom</span></a></span><span> </span><span class="annot"><span class="annottext">ActionConditions
+</span><a href="#local-6989586621679123504"><span class="hs-identifier hs-var">cond</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span class="hs-comment">-- | Funkcja przyjmuje dane wej&#347;ciowe od u&#380;ytkownika, nazw&#281; przedmiotu.</span><span>
+</span><span id="line-112"></span><span class="hs-comment">-- Sprawdza czy akcja mo&#380;e zosta&#263; wykonana, to znaczy czy dany przedmiot jest w posiadaniu, </span><span>
+</span><span id="line-113"></span><span class="hs-comment">-- czy istnieje akcja o danej nazwie i czy wszystkie potrzebne do niej warunki s&#261; spe&#322;nione. Zwraca True lub False.</span><span>
+</span><span id="line-114"></span><span class="annot"><a href="GameActions.html#canActionBeExecuted"><span class="hs-identifier hs-type">canActionBeExecuted</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#UserActionInput"><span class="hs-identifier hs-type">UserActionInput</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-type">ActionsMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-115"></span><span id="canActionBeExecuted"><span class="annot"><span class="annottext">canActionBeExecuted :: RoomName -&gt; RoomName -&gt; ActionsMap -&gt; AdventureGame -&gt; Bool
+</span><a href="GameActions.html#canActionBeExecuted"><span class="hs-identifier hs-var hs-var">canActionBeExecuted</span></a></span></span><span> </span><span id="local-6989586621679123495"><span class="annot"><span class="annottext">input :: RoomName
+</span><a href="#local-6989586621679123495"><span class="hs-identifier hs-var">input</span></a></span></span><span> </span><span id="local-6989586621679123494"><span class="annot"><span class="annottext">item :: RoomName
+</span><a href="#local-6989586621679123494"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span id="local-6989586621679123493"><span class="annot"><span class="annottext">actionSet :: ActionsMap
+</span><a href="#local-6989586621679123493"><span class="hs-identifier hs-var">actionSet</span></a></span></span><span> </span><span id="local-6989586621679123492"><span class="annot"><span class="annottext">game :: AdventureGame
+</span><a href="#local-6989586621679123492"><span class="hs-identifier hs-var">game</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; Bool
+</span><a href="Items.html#itemPossesion"><span class="hs-identifier hs-var">itemPossesion</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123494"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123492"><span class="hs-identifier hs-var">game</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; ActionsMap -&gt; Bool
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Bool
+</span><span class="hs-identifier hs-var">M.member</span></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123495"><span class="hs-identifier hs-var">input</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123493"><span class="hs-identifier hs-var">actionSet</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">ActionConditions -&gt; AdventureGame -&gt; Bool
+</span><a href="GameActions.html#checkConditions"><span class="hs-identifier hs-var">checkConditions</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">GameAction -&gt; ActionConditions
+</span><a href="GameActions.html#conditions"><span class="hs-identifier hs-var hs-var">conditions</span></a></span><span> </span><span class="annot"><span class="annottext">GameAction
+</span><a href="#local-6989586621679123489"><span class="hs-identifier hs-var">action</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123492"><span class="hs-identifier hs-var">game</span></a></span><span>
+</span><span id="line-116"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-117"></span><span>      </span><span id="local-6989586621679123489"><span class="annot"><span class="annottext">action :: GameAction
+</span><a href="#local-6989586621679123489"><span class="hs-identifier hs-var hs-var">action</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe GameAction -&gt; GameAction
+forall a. HasCallStack =&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromJust</span></span><span> </span><span class="annot"><span class="annottext">(Maybe GameAction -&gt; GameAction) -&gt; Maybe GameAction -&gt; GameAction
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; ActionsMap -&gt; Maybe GameAction
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">M.lookup</span></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123495"><span class="hs-identifier hs-var">input</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123493"><span class="hs-identifier hs-var">actionSet</span></a></span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- | Funkcja wyci&#261;ga z mapy 'GameAction' dla podanej nazwy akcji. </span><span>
+</span><span id="line-120"></span><span class="hs-comment">-- Uwaga: t&#261; funkc&#281; mo&#380;na wywo&#322;ywa&#263; tylko po sprawdzeniu, &#380;e w mapie znajduje si&#281; akcja o podanej nazwie. </span><span>
+</span><span id="line-121"></span><span class="annot"><a href="GameActions.html#getActionResult"><span class="hs-identifier hs-type">getActionResult</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#ActionName"><span class="hs-identifier hs-type">ActionName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-type">ActionsMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameActions.html#GameAction"><span class="hs-identifier hs-type">GameAction</span></a></span><span>
+</span><span id="line-122"></span><span id="getActionResult"><span class="annot"><span class="annottext">getActionResult :: RoomName -&gt; ActionsMap -&gt; GameAction
+</span><a href="GameActions.html#getActionResult"><span class="hs-identifier hs-var hs-var">getActionResult</span></a></span></span><span> </span><span id="local-6989586621679123485"><span class="annot"><span class="annottext">input :: RoomName
+</span><a href="#local-6989586621679123485"><span class="hs-identifier hs-var">input</span></a></span></span><span> </span><span id="local-6989586621679123484"><span class="annot"><span class="annottext">actionSet :: ActionsMap
+</span><a href="#local-6989586621679123484"><span class="hs-identifier hs-var">actionSet</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe GameAction -&gt; GameAction
+forall a. HasCallStack =&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromJust</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RoomName -&gt; ActionsMap -&gt; Maybe GameAction
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">M.lookup</span></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123485"><span class="hs-identifier hs-var">input</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123484"><span class="hs-identifier hs-var">actionSet</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-123"></span><span>
+</span><span id="line-124"></span><span class="hs-comment">-- | Funkcja wykonuje dan&#261; akcj&#281; poprzez modyfikacj&#281; stanu gry. </span><span>
+</span><span id="line-125"></span><span class="hs-comment">-- Funkcja wypisuje stosown&#261; wiadomo&#347;&#263; o sukcesie lub pora&#380;ce. </span><span>
+</span><span id="line-126"></span><span class="annot"><a href="GameActions.html#runAction"><span class="hs-identifier hs-type">runAction</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#ActionName"><span class="hs-identifier hs-type">ActionName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-type">ActionsMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#GameIO"><span class="hs-identifier hs-type">GameIO</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-127"></span><span id="runAction"><span class="annot"><span class="annottext">runAction :: RoomName -&gt; ActionsMap -&gt; GameIO ()
+</span><a href="GameActions.html#runAction"><span class="hs-identifier hs-var hs-var">runAction</span></a></span></span><span> </span><span id="local-6989586621679123482"><span class="annot"><span class="annottext">input :: RoomName
+</span><a href="#local-6989586621679123482"><span class="hs-identifier hs-var">input</span></a></span></span><span> </span><span id="local-6989586621679123481"><span class="annot"><span class="annottext">actionSet :: ActionsMap
+</span><a href="#local-6989586621679123481"><span class="hs-identifier hs-var">actionSet</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(AdventureGame -&gt; AdventureGame) -&gt; GameIO ()
+forall (m :: * -&gt; *) s. Monad m =&gt; (s -&gt; s) -&gt; StateT s m ()
+</span><span class="hs-identifier hs-var">modify'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ActionResult -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="GameActions.html#executeActionResult"><span class="hs-identifier hs-var">executeActionResult</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">GameAction -&gt; ActionResult
+</span><a href="GameActions.html#actionResult"><span class="hs-identifier hs-var hs-var">actionResult</span></a></span><span> </span><span class="annot"><span class="annottext">GameAction
+</span><a href="#local-6989586621679123479"><span class="hs-identifier hs-var">gameAction</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">GameIO () -&gt; GameIO () -&gt; GameIO ()
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">ActionMessage -&gt; GameIO ()
+</span><a href="GameState.html#processActionWithMessage"><span class="hs-identifier hs-var">processActionWithMessage</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">GameAction -&gt; ActionMessage
+</span><a href="GameActions.html#message"><span class="hs-identifier hs-var hs-var">message</span></a></span><span> </span><span class="annot"><span class="annottext">GameAction
+</span><a href="#local-6989586621679123479"><span class="hs-identifier hs-var">gameAction</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-128"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-129"></span><span>      </span><span id="local-6989586621679123479"><span class="annot"><span class="annottext">gameAction :: GameAction
+</span><a href="#local-6989586621679123479"><span class="hs-identifier hs-var hs-var">gameAction</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; ActionsMap -&gt; GameAction
+</span><a href="GameActions.html#getActionResult"><span class="hs-identifier hs-var">getActionResult</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123482"><span class="hs-identifier hs-var">input</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123481"><span class="hs-identifier hs-var">actionSet</span></a></span><span>
+</span><span id="line-130"></span><span>
+</span><span id="line-131"></span><span class="hs-comment">-- | Funkcja przyjmuje wej&#347;cie od u&#380;ytkownika, nazw&#281; przedmiotu i map&#281; akcji.</span><span>
+</span><span id="line-132"></span><span class="hs-comment">-- Akcja zostaje sprawdzona funkcj&#261; 'canActionBeExecuted' i ewentualnie wykonana funkcj&#261; 'runAction'. </span><span>
+</span><span id="line-133"></span><span class="annot"><a href="GameActions.html#useItem"><span class="hs-identifier hs-type">useItem</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#UserActionInput"><span class="hs-identifier hs-type">UserActionInput</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-type">ActionsMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#GameIO"><span class="hs-identifier hs-type">GameIO</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-134"></span><span id="useItem"><span class="annot"><span class="annottext">useItem :: RoomName -&gt; RoomName -&gt; ActionsMap -&gt; GameIO Bool
+</span><a href="GameActions.html#useItem"><span class="hs-identifier hs-var hs-var">useItem</span></a></span></span><span> </span><span id="local-6989586621679123476"><span class="annot"><span class="annottext">input :: RoomName
+</span><a href="#local-6989586621679123476"><span class="hs-identifier hs-var">input</span></a></span></span><span> </span><span id="local-6989586621679123475"><span class="annot"><span class="annottext">item :: RoomName
+</span><a href="#local-6989586621679123475"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span id="local-6989586621679123474"><span class="annot"><span class="annottext">actionSet :: ActionsMap
+</span><a href="#local-6989586621679123474"><span class="hs-identifier hs-var">actionSet</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-135"></span><span>    </span><span id="local-6989586621679123473"><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123473"><span class="hs-identifier hs-var">advGame</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO AdventureGame
+forall (m :: * -&gt; *) s. Monad m =&gt; StateT s m s
+</span><span class="hs-identifier hs-var">get</span></span><span>
+</span><span id="line-136"></span><span>    </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; RoomName -&gt; ActionsMap -&gt; AdventureGame -&gt; Bool
+</span><a href="GameActions.html#canActionBeExecuted"><span class="hs-identifier hs-var">canActionBeExecuted</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123476"><span class="hs-identifier hs-var">input</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123475"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123474"><span class="hs-identifier hs-var">actionSet</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123473"><span class="hs-identifier hs-var">advGame</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; ActionsMap -&gt; GameIO ()
+</span><a href="GameActions.html#runAction"><span class="hs-identifier hs-var">runAction</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123476"><span class="hs-identifier hs-var">input</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123474"><span class="hs-identifier hs-var">actionSet</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">ActionMessage -&gt; GameIO ()
+</span><a href="GameState.html#processActionWithMessage"><span class="hs-identifier hs-var">processActionWithMessage</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;Nothing happend.&quot;</span></span><span>
+</span><span id="line-137"></span><span>    </span><span class="annot"><span class="annottext">Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-138"></span><span>
+</span><span id="line-139"></span><span class="hs-comment">-- | Funkca parsuje flik z akcjami. </span><span>
+</span><span id="line-140"></span><span class="hs-comment">-- Plik powinien si&#281; znajodwa&#263; w folderze gameFiles i mie&#263; nazw&#281; actions. </span><span>
+</span><span id="line-141"></span><span class="annot"><a href="GameActions.html#loadMapFromFile"><span class="hs-identifier hs-type">loadMapFromFile</span></a></span><span> </span><span class="hs-glyph">::</span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">M.Map</span></span><span> </span><span class="annot"><a href="GameActions.html#ActionName"><span class="hs-identifier hs-type">ActionName</span></a></span><span> </span><span class="annot"><a href="GameActions.html#GameAction"><span class="hs-identifier hs-type">GameAction</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-142"></span><span id="loadMapFromFile"><span class="annot"><span class="annottext">loadMapFromFile :: IO (Either ActionMessage ActionsMap)
+</span><a href="GameActions.html#loadMapFromFile"><span class="hs-identifier hs-var hs-var">loadMapFromFile</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ActionMessage -&gt; IO (Either ActionMessage ActionsMap)
+forall a.
+FromJSON a =&gt;
+ActionMessage -&gt; IO (Either ActionMessage a)
+</span><span class="hs-identifier hs-var">eitherDecodeFileStrict</span></span><span> </span><span class="annot"><span class="annottext">(ActionMessage -&gt; IO (Either ActionMessage ActionsMap))
+-&gt; ActionMessage -&gt; IO (Either ActionMessage ActionsMap)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="hs-string">&quot;gameFiles&quot;</span></span><span> </span><span class="annot"><span class="annottext">ActionMessage -&gt; ActionMessage -&gt; ActionMessage
+</span><span class="hs-operator hs-var">&lt;/&gt;</span></span><span> </span><span class="annot"><span class="hs-string">&quot;actions&quot;</span></span><span>
+</span><span id="line-143"></span><span>
+</span><span id="line-144"></span><span class="hs-comment">-- | Funkcja pr&#243;buje sparsowa&#263; plik z akcjami. </span><span>
+</span><span id="line-145"></span><span class="hs-comment">-- Zwraca sparsowan&#261; map&#281; akcji lub wypisuje wiadomo&#347;&#263; o pora&#380;ce i zwraca pust&#261; map&#281;.</span><span>
+</span><span id="line-146"></span><span class="annot"><a href="GameActions.html#parseActions"><span class="hs-identifier hs-type">parseActions</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-type">ActionsMap</span></a></span><span>
+</span><span id="line-147"></span><span id="parseActions"><span class="annot"><span class="annottext">parseActions :: IO ActionsMap
+</span><a href="GameActions.html#parseActions"><span class="hs-identifier hs-var hs-var">parseActions</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span> </span><span>
+</span><span id="line-148"></span><span>    </span><span id="local-6989586621679123467"><span class="annot"><span class="annottext">Either ActionMessage ActionsMap
+</span><a href="#local-6989586621679123467"><span class="hs-identifier hs-var">act</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO (Either ActionMessage ActionsMap)
+</span><a href="GameActions.html#loadMapFromFile"><span class="hs-identifier hs-var">loadMapFromFile</span></a></span><span>
+</span><span id="line-149"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either ActionMessage ActionsMap
+</span><a href="#local-6989586621679123467"><span class="hs-identifier hs-var">act</span></a></span><span> </span><span class="hs-keyword">of</span><span> </span><span>
+</span><span id="line-150"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679123466"><span class="annot"><span class="annottext">actions :: ActionsMap
+</span><a href="#local-6989586621679123466"><span class="hs-identifier hs-var">actions</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">ActionsMap -&gt; IO ActionsMap
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123466"><span class="hs-identifier hs-var">actions</span></a></span><span> </span><span>
+</span><span id="line-151"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679123465"><span class="annot"><span class="annottext">err :: ActionMessage
+</span><a href="#local-6989586621679123465"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">ActionMessage -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="annot"><span class="annottext">ActionMessage
+</span><a href="#local-6989586621679123465"><span class="hs-identifier hs-var">err</span></a></span><span> </span><span class="annot"><span class="annottext">IO () -&gt; IO () -&gt; IO ()
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">ActionMessage -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="annot"><span class="hs-string">&quot;Actions not loaded&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO () -&gt; IO ActionsMap -&gt; IO ActionsMap
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">ActionsMap -&gt; IO ActionsMap
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+forall k a. Map k a
+</span><span class="hs-identifier hs-var">M.empty</span></span><span> </span><span>
+</span><span id="line-152"></span><span>        </span><span>
+</span><span id="line-153"></span><span class="hs-comment">-- | Funkcja sprawdza czy dana akcja z wej&#347;cia u&#380;ytkownika znajduje si&#281; w zbiorze wszystkich akcji. </span><span>
+</span><span id="line-154"></span><span class="annot"><a href="GameActions.html#checkInputActionsMap"><span class="hs-identifier hs-type">checkInputActionsMap</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#UserActionInput"><span class="hs-identifier hs-type">UserActionInput</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-type">ActionsMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-155"></span><span id="checkInputActionsMap"><span class="annot"><span class="annottext">checkInputActionsMap :: RoomName -&gt; ActionsMap -&gt; Bool
+</span><a href="GameActions.html#checkInputActionsMap"><span class="hs-identifier hs-var hs-var">checkInputActionsMap</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; ActionsMap -&gt; Bool
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Bool
+</span><span class="hs-identifier hs-var">M.member</span></span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span>
+</span><span id="line-158"></span><span class="hs-comment">-- simpleAction :: GameAction</span><span>
+</span><span id="line-159"></span><span class="hs-comment">-- simpleAction = GameAction (T.pack &quot;key&quot;) &quot;You opended the box.&quot; (ActionConditions (T.pack &quot;chamber&quot;) [T.pack &quot;box&quot;]) (ChangeRoomInventory $ ReplaceItem (T.pack &quot;box&quot;) (T.pack &quot;opened box&quot;))</span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span class="hs-comment">-- actionMap :: ActionsMap </span><span>
+</span><span id="line-162"></span><span class="hs-comment">-- actionMap = M.fromList [(T.pack &quot;use key&quot;, simpleAction), (T.pack &quot;open key&quot;, simpleAction)]</span><span>
+</span><span id="line-163"></span><span>
+</span><span id="line-164"></span><span class="hs-comment">-- parseMap :: IO ()</span><span>
+</span><span id="line-165"></span><span class="hs-comment">-- parseMap = encodeFile (&quot;gameFiles&quot; &lt;/&gt; &quot;actions&quot;) actionMap</span></pre></body></html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# OPTIONS -Wall #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{-|
+Module      : Items
+Description : Zabieranie i odk&#322;adanie przedmiot&#243;w. 
+
+Ten modu&#322; zawiera definicje funkcji zwi&#261;zanych z podnoszeniem i odk&#322;adaniem przedmiot&#243;w w pokoju. 
+Znajduj&#261; si&#281; tu funkcje odpowiadaj&#261;ce zar&#243;wno za zmian&#281; pokoi jak i zmian&#281; posiadanych przedmiot&#243;w. 
+-}</span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Items</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map.Strict</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">M</span></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.State</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Class</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="GameState.html"><span class="hs-identifier">GameState</span></a></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="RoomParser.html"><span class="hs-identifier">RoomParser</span></a></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; przedmiotu i dodaje przedmiot do inwentarza. </span><span>
+</span><span id="line-24"></span><span class="annot"><a href="Items.html#addItemToInventory"><span class="hs-identifier hs-type">addItemToInventory</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span>
+</span><span id="line-25"></span><span id="addItemToInventory"><span class="annot"><span class="annottext">addItemToInventory :: ItemName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#addItemToInventory"><span class="hs-identifier hs-var hs-var">addItemToInventory</span></a></span></span><span> </span><span id="local-6989586621679123415"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123415"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span id="local-6989586621679123413"><span class="annot"><span class="annottext">world :: World
+</span><a href="#local-6989586621679123413"><span class="hs-identifier hs-var">world</span></a></span></span><span> </span><span id="local-6989586621679123412"><span class="annot"><span class="annottext">itemNames :: [ItemName]
+</span><a href="#local-6989586621679123412"><span class="hs-identifier hs-var">itemNames</span></a></span></span><span> </span><span id="local-6989586621679123411"><span class="annot"><span class="annottext">roomName :: ItemName
+</span><a href="#local-6989586621679123411"><span class="hs-identifier hs-var">roomName</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">World -&gt; [ItemName] -&gt; ItemName -&gt; AdventureGame
+</span><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-var">AdventureGame</span></a></span><span> </span><span class="annot"><span class="annottext">World
+</span><a href="#local-6989586621679123413"><span class="hs-identifier hs-var">world</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123415"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName -&gt; [ItemName] -&gt; [ItemName]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[ItemName]
+</span><a href="#local-6989586621679123412"><span class="hs-identifier hs-var">itemNames</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123411"><span class="hs-identifier hs-var">roomName</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; przedmiotu i usuwa przedmiot do inwentarza.</span><span>
+</span><span id="line-28"></span><span class="annot"><a href="Items.html#removeItemFromInventory"><span class="hs-identifier hs-type">removeItemFromInventory</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span>
+</span><span id="line-29"></span><span id="removeItemFromInventory"><span class="annot"><span class="annottext">removeItemFromInventory :: ItemName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#removeItemFromInventory"><span class="hs-identifier hs-var hs-var">removeItemFromInventory</span></a></span></span><span> </span><span id="local-6989586621679123409"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123409"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span id="local-6989586621679123408"><span class="annot"><span class="annottext">world :: World
+</span><a href="#local-6989586621679123408"><span class="hs-identifier hs-var">world</span></a></span></span><span> </span><span id="local-6989586621679123407"><span class="annot"><span class="annottext">itemNames :: [ItemName]
+</span><a href="#local-6989586621679123407"><span class="hs-identifier hs-var">itemNames</span></a></span></span><span> </span><span id="local-6989586621679123406"><span class="annot"><span class="annottext">roomName :: ItemName
+</span><a href="#local-6989586621679123406"><span class="hs-identifier hs-var">roomName</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">World -&gt; [ItemName] -&gt; ItemName -&gt; AdventureGame
+</span><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-var">AdventureGame</span></a></span><span> </span><span class="annot"><span class="annottext">World
+</span><a href="#local-6989586621679123408"><span class="hs-identifier hs-var">world</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ItemName -&gt; [ItemName] -&gt; [ItemName]
+forall a. Eq a =&gt; a -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">delete</span></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123409"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">[ItemName]
+</span><a href="#local-6989586621679123407"><span class="hs-identifier hs-var">itemNames</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123406"><span class="hs-identifier hs-var">roomName</span></a></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; przedmiotu i sprawdza czy znajduje si&#281; on w inwentarzu. </span><span>
+</span><span id="line-32"></span><span class="annot"><a href="Items.html#itemPossesion"><span class="hs-identifier hs-type">itemPossesion</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span>
+</span><span id="line-33"></span><span id="itemPossesion"><span class="annot"><span class="annottext">itemPossesion :: ItemName -&gt; AdventureGame -&gt; Bool
+</span><a href="Items.html#itemPossesion"><span class="hs-identifier hs-var hs-var">itemPossesion</span></a></span></span><span> </span><span id="local-6989586621679123403"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123403"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span id="local-6989586621679123402"><span class="annot"><span class="annottext">game :: AdventureGame
+</span><a href="#local-6989586621679123402"><span class="hs-identifier hs-var">game</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123403"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName -&gt; [ItemName] -&gt; Bool
+forall (t :: * -&gt; *) a. (Foldable t, Eq a) =&gt; a -&gt; t a -&gt; Bool
+</span><span class="hs-operator hs-var">`elem`</span></span><span> </span><span class="annot"><span class="annottext">AdventureGame -&gt; [ItemName]
+</span><a href="GameState.html#inventory"><span class="hs-identifier hs-var hs-var">inventory</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123402"><span class="hs-identifier hs-var">game</span></a></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; przedmiotu i sprawdza czy znajduje si&#281; on w aktualnym pokoju gracza. </span><span>
+</span><span id="line-36"></span><span class="annot"><a href="Items.html#lookForItemInRoom"><span class="hs-identifier hs-type">lookForItemInRoom</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-37"></span><span id="lookForItemInRoom"><span class="annot"><span class="annottext">lookForItemInRoom :: ItemName -&gt; AdventureGame -&gt; Maybe Bool
+</span><a href="Items.html#lookForItemInRoom"><span class="hs-identifier hs-var hs-var">lookForItemInRoom</span></a></span></span><span> </span><span id="local-6989586621679123398"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123398"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span id="local-6989586621679123397"><span class="annot"><span class="annottext">game :: AdventureGame
+</span><a href="#local-6989586621679123397"><span class="hs-identifier hs-var">game</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">AdventureGame -&gt; Maybe Room
+</span><a href="GameState.html#getCurrentRoom%27"><span class="hs-identifier hs-var">getCurrentRoom'</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123397"><span class="hs-identifier hs-var">game</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Room -&gt; (Room -&gt; Maybe Bool) -&gt; Maybe Bool
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Maybe Bool
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Maybe Bool) -&gt; (Room -&gt; Bool) -&gt; Room -&gt; Maybe Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">ItemName -&gt; Map ItemName ItemName -&gt; Bool
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Bool
+</span><span class="hs-identifier hs-var">M.member</span></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123398"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">(Map ItemName ItemName -&gt; Bool)
+-&gt; (Room -&gt; Map ItemName ItemName) -&gt; Room -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Room -&gt; Map ItemName ItemName
+</span><a href="RoomParser.html#items"><span class="hs-identifier hs-var hs-var">items</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; przedmiotu oraz pok&#243;j i zmienia map&#281; pokoj&#243;w poprzez usuni&#281;cie przedmiotu z pokoju funkcj&#261; 'takeItemChangeRoom'. </span><span>
+</span><span id="line-40"></span><span class="annot"><a href="Items.html#takeItemChangeWorld"><span class="hs-identifier hs-type">takeItemChangeWorld</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#World"><span class="hs-identifier hs-type">World</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#World"><span class="hs-identifier hs-type">World</span></a></span><span>
+</span><span id="line-41"></span><span id="takeItemChangeWorld"><span class="annot"><span class="annottext">takeItemChangeWorld :: ItemName -&gt; Room -&gt; World -&gt; World
+</span><a href="Items.html#takeItemChangeWorld"><span class="hs-identifier hs-var hs-var">takeItemChangeWorld</span></a></span></span><span> </span><span id="local-6989586621679123391"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123391"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span id="local-6989586621679123390"><span class="annot"><span class="annottext">room :: Room
+</span><a href="#local-6989586621679123390"><span class="hs-identifier hs-var">room</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Room -&gt; Room) -&gt; ItemName -&gt; World -&gt; World
+forall k a. Ord k =&gt; (a -&gt; a) -&gt; k -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.adjust</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ItemName -&gt; Room -&gt; Room
+</span><a href="Items.html#takeItemChangeRoom"><span class="hs-identifier hs-var">takeItemChangeRoom</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123391"><span class="hs-identifier hs-var">item</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Room -&gt; ItemName
+</span><a href="RoomParser.html#name"><span class="hs-identifier hs-var hs-var">name</span></a></span><span> </span><span class="annot"><span class="annottext">Room
+</span><a href="#local-6989586621679123390"><span class="hs-identifier hs-var">room</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; przedmiotu oraz pok&#243;j.</span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- Zwraca pok&#243;j z usuni&#281;tym przedmiotem.  </span><span>
+</span><span id="line-45"></span><span class="annot"><a href="Items.html#takeItemChangeRoom"><span class="hs-identifier hs-type">takeItemChangeRoom</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span>
+</span><span id="line-46"></span><span id="takeItemChangeRoom"><span class="annot"><span class="annottext">takeItemChangeRoom :: ItemName -&gt; Room -&gt; Room
+</span><a href="Items.html#takeItemChangeRoom"><span class="hs-identifier hs-var hs-var">takeItemChangeRoom</span></a></span></span><span> </span><span id="local-6989586621679123386"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123386"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span> </span><span id="local-6989586621679123384"><span class="annot"><span class="annottext">rName :: ItemName
+</span><a href="#local-6989586621679123384"><span class="hs-identifier hs-var">rName</span></a></span></span><span> </span><span id="local-6989586621679123383"><span class="annot"><span class="annottext">desc :: ItemName
+</span><a href="#local-6989586621679123383"><span class="hs-identifier hs-var">desc</span></a></span></span><span> </span><span id="local-6989586621679123382"><span class="annot"><span class="annottext">rItems :: Map ItemName ItemName
+</span><a href="#local-6989586621679123382"><span class="hs-identifier hs-var">rItems</span></a></span></span><span> </span><span id="local-6989586621679123381"><span class="annot"><span class="annottext">rExits :: ExitsFromRoom
+</span><a href="#local-6989586621679123381"><span class="hs-identifier hs-var">rExits</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ItemName
+-&gt; ItemName -&gt; Map ItemName ItemName -&gt; ExitsFromRoom -&gt; Room
+</span><a href="RoomParser.html#Room"><span class="hs-identifier hs-var">Room</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123384"><span class="hs-identifier hs-var">rName</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123383"><span class="hs-identifier hs-var">desc</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ItemName -&gt; Map ItemName ItemName -&gt; Map ItemName ItemName
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.delete</span></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123386"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">Map ItemName ItemName
+</span><a href="#local-6989586621679123382"><span class="hs-identifier hs-var">rItems</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ExitsFromRoom
+</span><a href="#local-6989586621679123381"><span class="hs-identifier hs-var">rExits</span></a></span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; przedmiotu i zmienia stan gry poprzez usuni&#281;cie go z pokoju. </span><span>
+</span><span id="line-49"></span><span class="annot"><a href="Items.html#takeItemChangeGame"><span class="hs-identifier hs-type">takeItemChangeGame</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span>
+</span><span id="line-50"></span><span id="takeItemChangeGame"><span class="annot"><span class="annottext">takeItemChangeGame :: ItemName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#takeItemChangeGame"><span class="hs-identifier hs-var hs-var">takeItemChangeGame</span></a></span></span><span> </span><span id="local-6989586621679123378"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123378"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span id="local-6989586621679123377"><span class="annot"><span class="annottext">g :: AdventureGame
+</span><a href="#local-6989586621679123377"><span class="hs-identifier hs-var">g</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span id="local-6989586621679123376"><span class="annot"><span class="annottext">world :: World
+</span><a href="#local-6989586621679123376"><span class="hs-identifier hs-var">world</span></a></span></span><span> </span><span id="local-6989586621679123375"><span class="annot"><span class="annottext">itemNames :: [ItemName]
+</span><a href="#local-6989586621679123375"><span class="hs-identifier hs-var">itemNames</span></a></span></span><span> </span><span id="local-6989586621679123374"><span class="annot"><span class="annottext">roomName :: ItemName
+</span><a href="#local-6989586621679123374"><span class="hs-identifier hs-var">roomName</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">World -&gt; [ItemName] -&gt; ItemName -&gt; AdventureGame
+</span><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-var">AdventureGame</span></a></span><span> </span><span class="annot"><span class="annottext">World
+</span><a href="#local-6989586621679123373"><span class="hs-identifier hs-var">newWorld</span></a></span><span> </span><span class="annot"><span class="annottext">[ItemName]
+</span><a href="#local-6989586621679123372"><span class="hs-identifier hs-var">newInv</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123374"><span class="hs-identifier hs-var">roomName</span></a></span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-52"></span><span>      </span><span id="local-6989586621679123373"><span class="annot"><span class="annottext">newWorld :: World
+</span><a href="#local-6989586621679123373"><span class="hs-identifier hs-var hs-var">newWorld</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ItemName -&gt; Room -&gt; World -&gt; World
+</span><a href="Items.html#takeItemChangeWorld"><span class="hs-identifier hs-var">takeItemChangeWorld</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123378"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">AdventureGame -&gt; Room
+</span><a href="GameState.html#getCurrentRoom"><span class="hs-identifier hs-var">getCurrentRoom</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123377"><span class="hs-identifier hs-var">g</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">World
+</span><a href="#local-6989586621679123376"><span class="hs-identifier hs-var">world</span></a></span><span>
+</span><span id="line-53"></span><span>      </span><span id="local-6989586621679123372"><span class="annot"><span class="annottext">newInv :: [ItemName]
+</span><a href="#local-6989586621679123372"><span class="hs-identifier hs-var hs-var">newInv</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123378"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName -&gt; [ItemName] -&gt; [ItemName]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[ItemName]
+</span><a href="#local-6989586621679123375"><span class="hs-identifier hs-var">itemNames</span></a></span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- | Funkcja przyjuje nazw&#281; przedmiotu, sprawda czy jest on w aktualnym pokoju. </span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- Je&#347;li przedmiot jest dost&#281;pny stan gry zostaje zmodyfikowany poprzez zabranie przedmiotu z pokoju </span><span>
+</span><span id="line-57"></span><span class="hs-comment">-- i umieszczenie go w inwertarzu. </span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- W przeciwnym przypadku jest wypisywany odpowiedni komunikat stan gry nie zostaje zmodyfikowany.</span><span>
+</span><span id="line-59"></span><span class="annot"><a href="Items.html#takeItem"><span class="hs-identifier hs-type">takeItem</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#GameIO"><span class="hs-identifier hs-type">GameIO</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-60"></span><span id="takeItem"><span class="annot"><span class="annottext">takeItem :: ItemName -&gt; GameIO Bool
+</span><a href="Items.html#takeItem"><span class="hs-identifier hs-var hs-var">takeItem</span></a></span></span><span> </span><span id="local-6989586621679123369"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123369"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-61"></span><span>  </span><span id="local-6989586621679123368"><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123368"><span class="hs-identifier hs-var">advGame</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO AdventureGame
+forall (m :: * -&gt; *) s. Monad m =&gt; StateT s m s
+</span><span class="hs-identifier hs-var">get</span></span><span>
+</span><span id="line-62"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Maybe Bool -&gt; Bool
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Bool -&gt; Bool) -&gt; Maybe Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">ItemName -&gt; AdventureGame -&gt; Maybe Bool
+</span><a href="Items.html#lookForItemInRoom"><span class="hs-identifier hs-var">lookForItemInRoom</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123369"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123368"><span class="hs-identifier hs-var">advGame</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">GameIO ()
+</span><a href="GameState.html#acceptAction"><span class="hs-identifier hs-var">acceptAction</span></a></span><span> </span><span class="annot"><span class="annottext">GameIO () -&gt; GameIO () -&gt; GameIO ()
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">(AdventureGame -&gt; AdventureGame) -&gt; GameIO ()
+forall (m :: * -&gt; *) s. Monad m =&gt; (s -&gt; s) -&gt; StateT s m ()
+</span><span class="hs-identifier hs-var">modify'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ItemName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#takeItemChangeGame"><span class="hs-identifier hs-var">takeItemChangeGame</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123369"><span class="hs-identifier hs-var">item</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">IO () -&gt; GameIO ()
+forall (t :: (* -&gt; *) -&gt; * -&gt; *) (m :: * -&gt; *) a.
+(MonadTrans t, Monad m) =&gt;
+m a -&gt; t m a
+</span><span class="hs-identifier hs-var">lift</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="annot"><span class="hs-string">&quot;You can't take this.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-63"></span><span>  </span><span class="annot"><span class="annottext">Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; przedmiotu i zmienia stan gry poprzez dodanie go do pokoju.</span><span>
+</span><span id="line-66"></span><span class="annot"><a href="Items.html#putItemChangeGame"><span class="hs-identifier hs-type">putItemChangeGame</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span>
+</span><span id="line-67"></span><span id="putItemChangeGame"><span class="annot"><span class="annottext">putItemChangeGame :: ItemName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#putItemChangeGame"><span class="hs-identifier hs-var hs-var">putItemChangeGame</span></a></span></span><span> </span><span id="local-6989586621679123360"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123360"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span id="local-6989586621679123359"><span class="annot"><span class="annottext">g :: AdventureGame
+</span><a href="#local-6989586621679123359"><span class="hs-identifier hs-var">g</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span id="local-6989586621679123358"><span class="annot"><span class="annottext">world :: World
+</span><a href="#local-6989586621679123358"><span class="hs-identifier hs-var">world</span></a></span></span><span> </span><span id="local-6989586621679123357"><span class="annot"><span class="annottext">itemNames :: [ItemName]
+</span><a href="#local-6989586621679123357"><span class="hs-identifier hs-var">itemNames</span></a></span></span><span> </span><span id="local-6989586621679123356"><span class="annot"><span class="annottext">roomName :: ItemName
+</span><a href="#local-6989586621679123356"><span class="hs-identifier hs-var">roomName</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">World -&gt; [ItemName] -&gt; ItemName -&gt; AdventureGame
+</span><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-var">AdventureGame</span></a></span><span> </span><span class="annot"><span class="annottext">World
+</span><a href="#local-6989586621679123355"><span class="hs-identifier hs-var">newWorld</span></a></span><span> </span><span class="annot"><span class="annottext">[ItemName]
+</span><a href="#local-6989586621679123354"><span class="hs-identifier hs-var">newInv</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123356"><span class="hs-identifier hs-var">roomName</span></a></span><span>
+</span><span id="line-68"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-69"></span><span>      </span><span id="local-6989586621679123355"><span class="annot"><span class="annottext">newWorld :: World
+</span><a href="#local-6989586621679123355"><span class="hs-identifier hs-var hs-var">newWorld</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ItemName -&gt; Room -&gt; World -&gt; World
+</span><a href="Items.html#putItemChangeWorld"><span class="hs-identifier hs-var">putItemChangeWorld</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123360"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">AdventureGame -&gt; Room
+</span><a href="GameState.html#getCurrentRoom"><span class="hs-identifier hs-var">getCurrentRoom</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123359"><span class="hs-identifier hs-var">g</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">World
+</span><a href="#local-6989586621679123358"><span class="hs-identifier hs-var">world</span></a></span><span>
+</span><span id="line-70"></span><span>      </span><span id="local-6989586621679123354"><span class="annot"><span class="annottext">newInv :: [ItemName]
+</span><a href="#local-6989586621679123354"><span class="hs-identifier hs-var hs-var">newInv</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">ItemName -&gt; [ItemName] -&gt; [ItemName]
+forall a. Eq a =&gt; a -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">delete</span></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123360"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">[ItemName]
+</span><a href="#local-6989586621679123357"><span class="hs-identifier hs-var">itemNames</span></a></span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; przedmiotu oraz pok&#243;j i zmienia map&#281; pokoj&#243;w poprzez dodanie przedmiotu z pokoju funkcj&#261; 'putItemChangeRoom'. </span><span>
+</span><span id="line-73"></span><span class="annot"><a href="Items.html#putItemChangeWorld"><span class="hs-identifier hs-type">putItemChangeWorld</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#World"><span class="hs-identifier hs-type">World</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#World"><span class="hs-identifier hs-type">World</span></a></span><span>
+</span><span id="line-74"></span><span id="putItemChangeWorld"><span class="annot"><span class="annottext">putItemChangeWorld :: ItemName -&gt; Room -&gt; World -&gt; World
+</span><a href="Items.html#putItemChangeWorld"><span class="hs-identifier hs-var hs-var">putItemChangeWorld</span></a></span></span><span> </span><span id="local-6989586621679123352"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123352"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span id="local-6989586621679123351"><span class="annot"><span class="annottext">room :: Room
+</span><a href="#local-6989586621679123351"><span class="hs-identifier hs-var">room</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Room -&gt; Room) -&gt; ItemName -&gt; World -&gt; World
+forall k a. Ord k =&gt; (a -&gt; a) -&gt; k -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.adjust</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ItemName -&gt; Room -&gt; Room
+</span><a href="Items.html#putItemChangeRoom"><span class="hs-identifier hs-var">putItemChangeRoom</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123352"><span class="hs-identifier hs-var">item</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Room -&gt; ItemName
+</span><a href="RoomParser.html#name"><span class="hs-identifier hs-var hs-var">name</span></a></span><span> </span><span class="annot"><span class="annottext">Room
+</span><a href="#local-6989586621679123351"><span class="hs-identifier hs-var">room</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; przedmiotu oraz pok&#243;j.</span><span>
+</span><span id="line-77"></span><span class="hs-comment">-- Zwraca pok&#243;j z dodanym przedmiotem i domy&#347;lym opisem lokalizacji.  </span><span>
+</span><span id="line-78"></span><span class="annot"><a href="Items.html#putItemChangeRoom"><span class="hs-identifier hs-type">putItemChangeRoom</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span>
+</span><span id="line-79"></span><span id="putItemChangeRoom"><span class="annot"><span class="annottext">putItemChangeRoom :: ItemName -&gt; Room -&gt; Room
+</span><a href="Items.html#putItemChangeRoom"><span class="hs-identifier hs-var hs-var">putItemChangeRoom</span></a></span></span><span> </span><span id="local-6989586621679123349"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123349"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span> </span><span id="local-6989586621679123348"><span class="annot"><span class="annottext">rName :: ItemName
+</span><a href="#local-6989586621679123348"><span class="hs-identifier hs-var">rName</span></a></span></span><span> </span><span id="local-6989586621679123347"><span class="annot"><span class="annottext">desc :: ItemName
+</span><a href="#local-6989586621679123347"><span class="hs-identifier hs-var">desc</span></a></span></span><span> </span><span id="local-6989586621679123346"><span class="annot"><span class="annottext">rItems :: Map ItemName ItemName
+</span><a href="#local-6989586621679123346"><span class="hs-identifier hs-var">rItems</span></a></span></span><span> </span><span id="local-6989586621679123345"><span class="annot"><span class="annottext">rExits :: ExitsFromRoom
+</span><a href="#local-6989586621679123345"><span class="hs-identifier hs-var">rExits</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ItemName
+-&gt; ItemName -&gt; Map ItemName ItemName -&gt; ExitsFromRoom -&gt; Room
+</span><a href="RoomParser.html#Room"><span class="hs-identifier hs-var">Room</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123348"><span class="hs-identifier hs-var">rName</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123347"><span class="hs-identifier hs-var">desc</span></a></span><span> </span><span class="annot"><span class="annottext">Map ItemName ItemName
+</span><a href="#local-6989586621679123344"><span class="hs-identifier hs-var">newInv</span></a></span><span> </span><span class="annot"><span class="annottext">ExitsFromRoom
+</span><a href="#local-6989586621679123345"><span class="hs-identifier hs-var">rExits</span></a></span><span>
+</span><span id="line-80"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-81"></span><span>      </span><span id="local-6989586621679123344"><span class="annot"><span class="annottext">newInv :: Map ItemName ItemName
+</span><a href="#local-6989586621679123344"><span class="hs-identifier hs-var hs-var">newInv</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ItemName
+-&gt; ItemName -&gt; Map ItemName ItemName -&gt; Map ItemName ItemName
+forall k a. Ord k =&gt; k -&gt; a -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.insert</span></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123349"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; ItemName
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;There is &quot;</span></span><span> </span><span class="annot"><span class="annottext">ItemName -&gt; ItemName -&gt; ItemName
+</span><span class="hs-operator hs-var">`T.append`</span></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123349"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName -&gt; ItemName -&gt; ItemName
+</span><span class="hs-operator hs-var">`T.append`</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ItemName
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;. &quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Map ItemName ItemName
+</span><a href="#local-6989586621679123346"><span class="hs-identifier hs-var">rItems</span></a></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span class="hs-comment">-- | Funkcja przyjuje nazw&#281; przedmiotu, sprawda czy jest on w inwentarzu. </span><span>
+</span><span id="line-84"></span><span class="hs-comment">-- Je&#347;li przedmiot jest dost&#281;pny stan gry zostaje zmodyfikowany poprzez po&#322;o&#380;enie przedmiotu w pokoju. </span><span>
+</span><span id="line-85"></span><span class="hs-comment">-- W przeciwnym przypadku jest wypisywany odpowiedni komunikat stan gry nie zostaje zmodyfikowany. </span><span>
+</span><span id="line-86"></span><span class="annot"><a href="Items.html#putItem"><span class="hs-identifier hs-type">putItem</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#GameIO"><span class="hs-identifier hs-type">GameIO</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-87"></span><span id="putItem"><span class="annot"><span class="annottext">putItem :: ItemName -&gt; GameIO Bool
+</span><a href="Items.html#putItem"><span class="hs-identifier hs-var hs-var">putItem</span></a></span></span><span> </span><span id="local-6989586621679123339"><span class="annot"><span class="annottext">item :: ItemName
+</span><a href="#local-6989586621679123339"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-88"></span><span>  </span><span id="local-6989586621679123338"><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123338"><span class="hs-identifier hs-var">advGame</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO AdventureGame
+forall (m :: * -&gt; *) s. Monad m =&gt; StateT s m s
+</span><span class="hs-identifier hs-var">get</span></span><span>
+</span><span id="line-89"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">ItemName -&gt; AdventureGame -&gt; Bool
+</span><a href="Items.html#itemPossesion"><span class="hs-identifier hs-var">itemPossesion</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123339"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123338"><span class="hs-identifier hs-var">advGame</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">GameIO ()
+</span><a href="GameState.html#acceptAction"><span class="hs-identifier hs-var">acceptAction</span></a></span><span> </span><span class="annot"><span class="annottext">GameIO () -&gt; GameIO () -&gt; GameIO ()
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">(AdventureGame -&gt; AdventureGame) -&gt; GameIO ()
+forall (m :: * -&gt; *) s. Monad m =&gt; (s -&gt; s) -&gt; StateT s m ()
+</span><span class="hs-identifier hs-var">modify'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ItemName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Items.html#putItemChangeGame"><span class="hs-identifier hs-var">putItemChangeGame</span></a></span><span> </span><span class="annot"><span class="annottext">ItemName
+</span><a href="#local-6989586621679123339"><span class="hs-identifier hs-var">item</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">IO () -&gt; GameIO ()
+forall (t :: (* -&gt; *) -&gt; * -&gt; *) (m :: * -&gt; *) a.
+(MonadTrans t, Monad m) =&gt;
+m a -&gt; t m a
+</span><span class="hs-identifier hs-var">lift</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="annot"><span class="hs-string">&quot;You don't have that item.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-90"></span><span>  </span><span class="annot"><span class="annottext">Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span class="hs-comment">-- | Funkcja wypisuje na konsol&#281; aktualny stan posiadanych przedmiot&#243;w. </span><span>
+</span><span id="line-93"></span><span class="annot"><a href="Items.html#showInventory"><span class="hs-identifier hs-type">showInventory</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameState.html#GameIO"><span class="hs-identifier hs-type">GameIO</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-94"></span><span id="showInventory"><span class="annot"><span class="annottext">showInventory :: GameIO Bool
+</span><a href="Items.html#showInventory"><span class="hs-identifier hs-var hs-var">showInventory</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO AdventureGame
+forall (m :: * -&gt; *) s. Monad m =&gt; StateT s m s
+</span><span class="hs-identifier hs-var">get</span></span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO AdventureGame
+-&gt; (AdventureGame -&gt; GameIO ()) -&gt; GameIO ()
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">IO () -&gt; GameIO ()
+forall (t :: (* -&gt; *) -&gt; * -&gt; *) (m :: * -&gt; *) a.
+(MonadTrans t, Monad m) =&gt;
+m a -&gt; t m a
+</span><span class="hs-identifier hs-var">lift</span></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; GameIO ())
+-&gt; (AdventureGame -&gt; IO ()) -&gt; AdventureGame -&gt; GameIO ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[ItemName] -&gt; IO ()
+forall a. Show a =&gt; a -&gt; IO ()
+</span><span class="hs-identifier hs-var">print</span></span><span> </span><span class="annot"><span class="annottext">([ItemName] -&gt; IO ())
+-&gt; (AdventureGame -&gt; [ItemName]) -&gt; AdventureGame -&gt; IO ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">AdventureGame -&gt; [ItemName]
+</span><a href="GameState.html#inventory"><span class="hs-identifier hs-var hs-var">inventory</span></a></span><span> </span><span class="annot"><span class="annottext">GameIO () -&gt; GameIO Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-95"></span></pre></body></html>

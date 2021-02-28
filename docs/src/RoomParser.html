@@ -1,0 +1,242 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# OPTIONS -Wall #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE DeriveGeneric #-}</span><span>
+</span><span id="line-3"></span><span>
+</span><span id="line-4"></span><span class="hs-comment">{-|
+Module      : RoomParser
+Description : Definicja typ&#243;w danych zwi&#261;zanych z pokojami i parsowanie pokoi. 
+
+Ten modu&#322; zawiera definicje typ&#243;w zwi&#261;zanych z pokojami i przemiszczaniem si&#281; mi&#281;dzy nimi. 
+Znajduj&#261; si&#281; tu r&#243;wnie&#380; funkcje odpowiedzialne za parsowanie pokoi do gry.  
+-}</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">RoomParser</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map.Strict</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">M</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">B</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- import Data.Aeson.Types(Parser)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">System.FilePath</span></span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span class="hs-comment">-- | Alias dla nazwy pokoju. </span><span>
+</span><span id="line-23"></span><span class="hs-keyword">type</span><span> </span><span id="RoomName"><span class="annot"><a href="RoomParser.html#RoomName"><span class="hs-identifier hs-var">RoomName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- | Alias dla nazwy przedmiotu. </span><span>
+</span><span id="line-26"></span><span class="hs-keyword">type</span><span> </span><span id="ItemName"><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-var">ItemName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- | Alias dla opisu pozycji przedmiotu. </span><span>
+</span><span id="line-29"></span><span class="hs-keyword">type</span><span> </span><span id="PositionDesc"><span class="annot"><a href="RoomParser.html#PositionDesc"><span class="hs-identifier hs-var">PositionDesc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- | Typ do zarz&#261;dzania przedmiotami w pokoju. </span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- Sk&#322;ada si&#281; z mapy, kt&#243;rej kluczami s&#261; nazwy przedmiot&#243;w, a warto&#347;ciami ich opisy.</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">type</span><span> </span><span id="ItemsInRoom"><span class="annot"><a href="RoomParser.html#ItemsInRoom"><span class="hs-identifier hs-var">ItemsInRoom</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">M.Map</span></span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="annot"><a href="RoomParser.html#PositionDesc"><span class="hs-identifier hs-type">PositionDesc</span></a></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- | Typ do zarz&#261;dzania wyj&#347;ciami z pokoju. </span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- Jest to mapa, kt&#243;rej kluczami s&#261; kierunki typu 'Direction', a warto&#347;ciami nazwy pokoj&#243;w typu 'RoomName'.</span><span>
+</span><span id="line-37"></span><span class="hs-keyword">type</span><span> </span><span id="ExitsFromRoom"><span class="annot"><a href="RoomParser.html#ExitsFromRoom"><span class="hs-identifier hs-var">ExitsFromRoom</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">M.Map</span></span><span> </span><span class="annot"><a href="RoomParser.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span><span> </span><span class="annot"><a href="RoomParser.html#RoomName"><span class="hs-identifier hs-type">RoomName</span></a></span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- | Typ danych reprezentuj&#261;cy kierunki &#347;wiata, wykorzystywany do oznaczania wyj&#347;&#263; z pokoju. </span><span>
+</span><span id="line-40"></span><span id="local-6989586621679123095"><span id="local-6989586621679123096"></span></span><span class="hs-keyword">data</span><span> </span><span id="Direction"><span class="annot"><a href="RoomParser.html#Direction"><span class="hs-identifier hs-var">Direction</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="North"><span class="annot"><a href="RoomParser.html#North"><span class="hs-identifier hs-var">North</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="East"><span class="annot"><a href="RoomParser.html#East"><span class="hs-identifier hs-var">East</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="South"><span class="annot"><a href="RoomParser.html#South"><span class="hs-identifier hs-var">South</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="West"><span class="annot"><a href="RoomParser.html#West"><span class="hs-identifier hs-var">West</span></a></span></span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679123085"><span id="local-6989586621679123087"><span id="local-6989586621679123089"><span class="annot"><span class="annottext">Int -&gt; Direction -&gt; ShowS
+[Direction] -&gt; ShowS
+Direction -&gt; String
+(Int -&gt; Direction -&gt; ShowS)
+-&gt; (Direction -&gt; String)
+-&gt; ([Direction] -&gt; ShowS)
+-&gt; Show Direction
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Direction] -&gt; ShowS
+$cshowList :: [Direction] -&gt; ShowS
+show :: Direction -&gt; String
+$cshow :: Direction -&gt; String
+showsPrec :: Int -&gt; Direction -&gt; ShowS
+$cshowsPrec :: Int -&gt; Direction -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679123080"><span id="local-6989586621679123082"><span class="annot"><span class="annottext">Direction -&gt; Direction -&gt; Bool
+(Direction -&gt; Direction -&gt; Bool)
+-&gt; (Direction -&gt; Direction -&gt; Bool) -&gt; Eq Direction
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Direction -&gt; Direction -&gt; Bool
+$c/= :: Direction -&gt; Direction -&gt; Bool
+== :: Direction -&gt; Direction -&gt; Bool
+$c== :: Direction -&gt; Direction -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(forall x. Direction -&gt; Rep Direction x)
+-&gt; (forall x. Rep Direction x -&gt; Direction) -&gt; Generic Direction
+forall x. Rep Direction x -&gt; Direction
+forall x. Direction -&gt; Rep Direction x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep Direction x -&gt; Direction
+$cfrom :: forall x. Direction -&gt; Rep Direction x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- | Typ danych reprezentuj&#261;cy pok&#243;j. </span><span>
+</span><span id="line-43"></span><span id="local-6989586621679123074"><span id="local-6989586621679123075"></span></span><span class="hs-keyword">data</span><span> </span><span id="Room"><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-var">Room</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Room"><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-var">Room</span></a></span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-44"></span><span>   </span><span id="name"><span class="annot"><span class="annottext">Room -&gt; RoomName
+</span><a href="RoomParser.html#name"><span class="hs-identifier hs-var hs-var">name</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#RoomName"><span class="hs-identifier hs-type">RoomName</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-comment">-- ^ nazwa pokoju</span><span>
+</span><span id="line-45"></span><span>   </span><span id="description"><span class="annot"><span class="annottext">Room -&gt; RoomName
+</span><a href="RoomParser.html#description"><span class="hs-identifier hs-var hs-var">description</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">,</span><span> </span><span class="hs-comment">-- ^ opis danego miejsca</span><span>
+</span><span id="line-46"></span><span>   </span><span id="items"><span class="annot"><span class="annottext">Room -&gt; ItemsInRoom
+</span><a href="RoomParser.html#items"><span class="hs-identifier hs-var hs-var">items</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ItemsInRoom"><span class="hs-identifier hs-type">ItemsInRoom</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-comment">-- ^ zbi&#243;r przedmiot&#243;w znajduj&#261;cyh si&#281; w pokoju</span><span>
+</span><span id="line-47"></span><span>   </span><span id="exits"><span class="annot"><span class="annottext">Room -&gt; ExitsFromRoom
+</span><a href="RoomParser.html#exits"><span class="hs-identifier hs-var hs-var">exits</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#ExitsFromRoom"><span class="hs-identifier hs-type">ExitsFromRoom</span></a></span><span>  </span><span class="hs-comment">-- ^ zbi&#243;r mo&#380;liwych wyj&#347;&#263; z pokoju</span><span>
+</span><span id="line-48"></span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(forall x. Room -&gt; Rep Room x)
+-&gt; (forall x. Rep Room x -&gt; Room) -&gt; Generic Room
+forall x. Rep Room x -&gt; Room
+forall x. Room -&gt; Rep Room x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep Room x -&gt; Room
+$cfrom :: forall x. Room -&gt; Rep Room x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- | Implementacja 'Ord' dla typu 'Direction', aby typ 'Direction' mo&#380;na by&#322;o wykorzystywa&#263; jako klucze do map</span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- Kierunki s&#261; posortowane zgodnie z kierunkiem wskaz&#243;wek zegara zaczynaj&#261;c od p&#243;&#322;nocy.  </span><span>
+</span><span id="line-52"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123053"><span id="local-6989586621679123055"><span id="local-6989586621679123057"><span id="local-6989586621679123059"><span id="local-6989586621679123062"><span id="local-6989586621679123064"><span class="annot"><span class="hs-identifier hs-type">Ord</span></span><span> </span><span class="annot"><a href="RoomParser.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span></span></span></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-53"></span><span>   </span><span class="annot"><a href="RoomParser.html#North"><span class="hs-identifier hs-type">North</span></a></span><span> </span><span id="local-6989586621679123051"><span class="annot"><span class="annottext">&lt;= :: Direction -&gt; Direction -&gt; Bool
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">&lt;=</span></span></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-54"></span><span>   </span><span class="hs-identifier">_</span><span> </span><span class="annot"><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><a href="RoomParser.html#North"><span class="hs-identifier hs-type">North</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-55"></span><span>   </span><span class="annot"><a href="RoomParser.html#West"><span class="hs-identifier hs-type">West</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-56"></span><span>   </span><span class="hs-identifier">_</span><span> </span><span class="annot"><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><a href="RoomParser.html#West"><span class="hs-identifier hs-type">West</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-57"></span><span>   </span><span class="annot"><a href="RoomParser.html#East"><span class="hs-identifier hs-type">East</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><a href="RoomParser.html#South"><span class="hs-identifier hs-type">South</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-58"></span><span>   </span><span class="annot"><a href="RoomParser.html#South"><span class="hs-identifier hs-type">South</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><a href="RoomParser.html#East"><span class="hs-identifier hs-type">East</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-59"></span><span>   </span><span class="annot"><a href="RoomParser.html#East"><span class="hs-identifier hs-type">East</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><a href="RoomParser.html#East"><span class="hs-identifier hs-type">East</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-60"></span><span>   </span><span class="annot"><a href="RoomParser.html#South"><span class="hs-identifier hs-type">South</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><a href="RoomParser.html#South"><span class="hs-identifier hs-type">South</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span class="hs-comment">-- | Implementacja 'Show' dla typu 'Room'. </span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- W przypadku pokoju wypisywany jest jego opis, a nast&#281;pnie dodawne s&#261; opisy po&#322;o&#380;enia dla ka&#380;dego przedmiotu znajduj&#261;cego si&#281; w pokoju. </span><span>
+</span><span id="line-64"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123045"><span id="local-6989586621679123048"><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-65"></span><span>   </span><span id="local-6989586621679123044"><span class="annot"><span class="annottext">show :: Room -&gt; String
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">show</span></span></span><span> </span><span id="local-6989586621679123042"><span class="annot"><span class="annottext">room :: Room
+</span><a href="#local-6989586621679123042"><span class="hs-identifier hs-var">room</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679123041"><span class="hs-identifier hs-var">roomDescription</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679123040"><span class="hs-identifier hs-var">itemsInRoom</span></a></span><span>
+</span><span id="line-66"></span><span>     </span><span class="hs-keyword">where</span><span>
+</span><span id="line-67"></span><span>        </span><span id="local-6989586621679123041"><span class="annot"><span class="annottext">roomDescription :: String
+</span><a href="#local-6989586621679123041"><span class="hs-identifier hs-var hs-var">roomDescription</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; String
+</span><span class="hs-identifier hs-var">T.unpack</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Room -&gt; RoomName
+</span><a href="RoomParser.html#description"><span class="hs-identifier hs-var hs-var">description</span></a></span><span> </span><span class="annot"><span class="annottext">Room
+</span><a href="#local-6989586621679123042"><span class="hs-identifier hs-var">room</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>        </span><span id="local-6989586621679123038"><span class="annot"><span class="annottext">space :: RoomName
+</span><a href="#local-6989586621679123038"><span class="hs-identifier hs-var hs-var">space</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; RoomName
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot; &quot;</span></span><span>
+</span><span id="line-69"></span><span>        </span><span id="local-6989586621679123040"><span class="annot"><span class="annottext">itemsInRoom :: String
+</span><a href="#local-6989586621679123040"><span class="hs-identifier hs-var hs-var">itemsInRoom</span></a></span></span><span> </span><span class="hs-glyph">=</span><span class="annot"><span class="annottext">RoomName -&gt; String
+</span><span class="hs-identifier hs-var">T.unpack</span></span><span> </span><span class="annot"><span class="annottext">(RoomName -&gt; String) -&gt; RoomName -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(RoomName -&gt; RoomName -&gt; RoomName)
+-&gt; RoomName -&gt; ItemsInRoom -&gt; RoomName
+forall a b k. (a -&gt; b -&gt; a) -&gt; a -&gt; Map k b -&gt; a
+</span><span class="hs-identifier hs-var">M.foldl</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679123035"><span class="annot"><span class="annottext">acc :: RoomName
+</span><a href="#local-6989586621679123035"><span class="hs-identifier hs-var">acc</span></a></span></span><span> </span><span id="local-6989586621679123034"><span class="annot"><span class="annottext">item :: RoomName
+</span><a href="#local-6989586621679123034"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[RoomName] -&gt; RoomName
+</span><span class="hs-identifier hs-var">T.concat</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123035"><span class="hs-identifier hs-var">acc</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123038"><span class="hs-identifier hs-var">space</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123034"><span class="hs-identifier hs-var">item</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><span class="hs-identifier hs-var">T.empty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Room -&gt; ItemsInRoom
+</span><a href="RoomParser.html#items"><span class="hs-identifier hs-var hs-var">items</span></a></span><span> </span><span class="annot"><span class="annottext">Room
+</span><a href="#local-6989586621679123042"><span class="hs-identifier hs-var">room</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span class="hs-comment">-- | Domy&#347;lna implementacja FromJSON dla typu 'Direction' niezb&#281;dna do odczytu pokoj&#243;w z pliku. </span><span>
+</span><span id="line-72"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123028"><span id="local-6989586621679123030"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="RoomParser.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span></span></span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- | Domy&#347;lna implementacja ToJSON dla typu 'Direction' niezb&#281;dna do zapisu pokoj&#243;w do pliku. </span><span>
+</span><span id="line-75"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123019"><span id="local-6989586621679123021"><span id="local-6989586621679123023"><span id="local-6989586621679123025"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="RoomParser.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span></span></span></span></span><span>
+</span><span id="line-76"></span><span>
+</span><span id="line-77"></span><span class="hs-comment">-- | Domy&#347;lna implementacja FromJSONKey dla typu 'Direction' niezb&#281;dna odczytu pokoj&#243;w z pliku.  </span><span>
+</span><span id="line-78"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123014"><span id="local-6989586621679123016"><span class="annot"><span class="hs-identifier hs-type">FromJSONKey</span></span><span> </span><span class="annot"><a href="RoomParser.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span></span></span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span class="hs-comment">-- | Domy&#347;lna implementacja ToJSONKey dla typu 'Direction' niezb&#281;dna do zapisu pokoj&#243;w do pliku.</span><span>
+</span><span id="line-81"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123009"><span id="local-6989586621679123011"><span class="annot"><span class="hs-identifier hs-type">ToJSONKey</span></span><span> </span><span class="annot"><a href="RoomParser.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span></span></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span class="hs-comment">-- | Domy&#347;lna implementacja FromJSON dla typu 'Room'.</span><span>
+</span><span id="line-84"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679123004"><span id="local-6989586621679123006"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span></span></span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span class="hs-comment">-- | Domy&#347;lna implementacja ToJSON dla typu 'Room'.</span><span>
+</span><span id="line-87"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679122996"><span id="local-6989586621679122998"><span id="local-6989586621679123000"><span id="local-6989586621679123002"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span></span></span></span></span><span>
+</span><span id="line-88"></span><span>
+</span><span id="line-89"></span><span class="hs-comment">-- | Funkcja parsuj&#261;ca wszystkie pokoje do gry.</span><span>
+</span><span id="line-90"></span><span class="hs-comment">-- Plik definiuj&#261;cy pokoje powinien znajdowa&#263; si&#281; w foldere gameFiles i mie&#263; nazw&#281; rooms.json. </span><span>
+</span><span id="line-91"></span><span class="annot"><a href="RoomParser.html#parseGameRomms"><span class="hs-identifier hs-type">parseGameRomms</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">M.Map</span></span><span> </span><span class="annot"><a href="RoomParser.html#RoomName"><span class="hs-identifier hs-type">RoomName</span></a></span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span id="parseGameRomms"><span class="annot"><span class="annottext">parseGameRomms :: IO (Either String (Map RoomName Room))
+</span><a href="RoomParser.html#parseGameRomms"><span class="hs-identifier hs-var hs-var">parseGameRomms</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; Either String (Map RoomName Room)
+forall a. FromJSON a =&gt; ByteString -&gt; Either String a
+</span><span class="hs-identifier hs-var">eitherDecode</span></span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; Either String (Map RoomName Room))
+-&gt; IO ByteString -&gt; IO (Either String (Map RoomName Room))
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">B.readFile</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;gameFiles&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-operator hs-var">&lt;/&gt;</span></span><span> </span><span class="annot"><span class="hs-string">&quot;rooms.json&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span class="hs-comment">-- | Funkcja zwraca zagubiony pok&#243;j. </span><span>
+</span><span id="line-95"></span><span class="hs-comment">-- Podczas gry oznacza to, &#380;e &#347;wiat gry by&#322; &#378;le zdefiniowany i gracz wszed&#322; do pokoju kt&#243;ry nie zosta&#322; zdefiniowany. </span><span>
+</span><span id="line-96"></span><span class="annot"><a href="RoomParser.html#lostRoom"><span class="hs-identifier hs-type">lostRoom</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span>
+</span><span id="line-97"></span><span id="lostRoom"><span class="annot"><span class="annottext">lostRoom :: Room
+</span><a href="RoomParser.html#lostRoom"><span class="hs-identifier hs-var hs-var">lostRoom</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; RoomName -&gt; ItemsInRoom -&gt; ExitsFromRoom -&gt; Room
+</span><a href="RoomParser.html#Room"><span class="hs-identifier hs-var">Room</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RoomName
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;lost&quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RoomName
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;The game has crushed. You are lost! :(&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ItemsInRoom
+forall k a. Map k a
+</span><span class="hs-identifier hs-var">M.empty</span></span><span> </span><span class="annot"><span class="annottext">ExitsFromRoom
+forall k a. Map k a
+</span><span class="hs-identifier hs-var">M.empty</span></span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span class="hs-comment">-- | Funkcja zwraca nazw&#281; pokoju od kt&#243;rego rozpoczynana jest gra. </span><span>
+</span><span id="line-100"></span><span class="annot"><a href="RoomParser.html#parseStartRoom"><span class="hs-identifier hs-type">parseStartRoom</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="RoomParser.html#RoomName"><span class="hs-identifier hs-type">RoomName</span></a></span><span>
+</span><span id="line-101"></span><span id="parseStartRoom"><span class="annot"><span class="annottext">parseStartRoom :: IO RoomName
+</span><a href="RoomParser.html#parseStartRoom"><span class="hs-identifier hs-var hs-var">parseStartRoom</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; IO RoomName
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(RoomName -&gt; IO RoomName) -&gt; RoomName -&gt; IO RoomName
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RoomName
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;start room&quot;</span></span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span class="hs-comment">-- parseDirection' :: String -&gt; Parser Direction </span><span>
+</span><span id="line-104"></span><span class="hs-comment">-- parseDirection' x </span><span>
+</span><span id="line-105"></span><span class="hs-comment">--     | x == &quot;north&quot; = return North </span><span>
+</span><span id="line-106"></span><span class="hs-comment">--     | x == &quot;east&quot; = return East</span><span>
+</span><span id="line-107"></span><span class="hs-comment">--     | x == &quot;south&quot; = return South </span><span>
+</span><span id="line-108"></span><span class="hs-comment">--     | x == &quot;west&quot; = return West</span><span>
+</span><span id="line-109"></span><span class="hs-comment">--     | otherwise = fail $ &quot;Not known direction: &quot; ++ x </span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span class="hs-comment">-- parseRoom :: IO ()</span><span>
+</span><span id="line-112"></span><span class="hs-comment">-- parseRoom = do</span><span>
+</span><span id="line-113"></span><span class="hs-comment">--  d &lt;- (eitherDecode &lt;$&gt; getJSON) :: IO (Either String [Room])</span><span>
+</span><span id="line-114"></span><span class="hs-comment">--  case d of</span><span>
+</span><span id="line-115"></span><span class="hs-comment">--   Left err -&gt; putStrLn err</span><span>
+</span><span id="line-116"></span><span class="hs-comment">--   Right ps -&gt; print ps</span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- simpleRoom :: Room </span><span>
+</span><span id="line-120"></span><span class="hs-comment">-- simpleRoom = Room (T.pack &quot;start room&quot;) (T.pack &quot;You are in a large house for great spring.&quot;) simpleRoomItems simpleRoomExits</span><span>
+</span><span id="line-121"></span><span>
+</span><span id="line-122"></span><span class="hs-comment">-- simpleRoomItems :: ItemsInRoom </span><span>
+</span><span id="line-123"></span><span class="hs-comment">-- simpleRoomItems = M.fromList [(T.pack &quot;lamp&quot;, T.pack &quot;On the table there is a lamp.&quot;), (T.pack &quot;food&quot;, T.pack &quot;There is food.&quot;)]</span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span class="hs-comment">-- simpleRoomExits :: ExitsFromRoom </span><span>
+</span><span id="line-126"></span><span class="hs-comment">-- simpleRoomExits = M.fromList [(West, T.pack &quot;On the left there is huge door.&quot;), (North, T.pack &quot;In front of you there is open window.&quot;)]</span><span>
+</span><span id="line-127"></span><span>
+</span><span id="line-128"></span><span>
+</span><span id="line-129"></span><span class="hs-comment">-- parseGameRomms :: IO (Either String [Room])</span><span>
+</span><span id="line-130"></span><span class="hs-comment">-- parseGameRomms = eitherDecode &lt;$&gt; getJSON</span><span>
+</span><span id="line-131"></span><span>
+</span><span id="line-132"></span><span class="hs-comment">-- parseRooms :: [Room] -&gt; M.Map RoomName Room</span><span>
+</span><span id="line-133"></span><span class="hs-comment">-- parseRooms rooms = M.fromList $ fmap (\r@(Room roomName _ _ _) -&gt; (roomName, r)) rooms</span><span>
+</span><span id="line-134"></span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span class="hs-comment">-- parseSimpleRoom :: IO ()</span><span>
+</span><span id="line-137"></span><span class="hs-comment">-- parseSimpleRoom = encodeFile &quot;oneRoom.json&quot; simpleRoom</span><span>
+</span><span id="line-138"></span><span>
+</span><span id="line-139"></span><span class="hs-comment">-- parseMapRoom :: IO ()</span><span>
+</span><span id="line-140"></span><span class="hs-comment">-- parseMapRoom = encodeFile &quot;mapRoom.json&quot; (M.insert &quot;start room&quot; simpleRoom M.empty)</span></pre></body></html>

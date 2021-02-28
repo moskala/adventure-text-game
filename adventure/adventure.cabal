@@ -1,0 +1,82 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 2d0cb83b3d1cf0f27227ccbea90071f6dacd3b41a39b82cc56945613d8ed8cb2
+
+name:           adventure
+version:        0.1.0.0
+author:         Alicja Moskal
+maintainer:     example@example.com
+copyright:      2020 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+library
+  exposed-modules:
+      CommandParserText
+      GameActions
+      GameExe
+      GameState
+      Items
+      Moving
+      RoomParser
+  other-modules:
+      Paths_adventure
+  hs-source-dirs:
+      src
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , bytestring
+    , containers
+    , filepath
+    , parsec
+    , text
+    , transformers
+  default-language: Haskell2010
+
+executable adventure-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_adventure
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      adventure
+    , aeson
+    , base >=4.7 && <5
+    , bytestring
+    , containers
+    , filepath
+    , parsec
+    , text
+    , transformers
+  default-language: Haskell2010
+
+test-suite adventure-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_adventure
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      adventure
+    , aeson
+    , base >=4.7 && <5
+    , bytestring
+    , containers
+    , filepath
+    , parsec
+    , text
+    , transformers
+  default-language: Haskell2010

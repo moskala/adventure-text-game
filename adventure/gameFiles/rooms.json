@@ -1,0 +1,45 @@
+{
+	"house hall":
+	{
+		"items":{"key":"There is key.","lamp":"On the table there is a lamp.", "food":"On the table lies plate with food."},
+		"name":"house hall",
+		"exits":[["West","chamber"],["South","start room"]],
+		"description":"You are inside a building, a well house for a large spring. On the left there is huge door. In front of you there is open window."
+	},
+	"start room":
+	{
+		"items":{},
+		"name":"forest",
+		"exits":[["North","house hall"],["South","hill"]],
+		"description":"You are in a forest at the end of the road. There is a larger house in front of you. On the other side there are hills."
+	}, 
+	"hill":
+	{
+		"items":{},
+		"name":"hill",
+		"exits":[["East","dead end"],["West","cave"]],
+		"description":"You are at the mountain. There is crossroads. One way right, second left."
+	}, 
+	"chamber":
+	{
+		"items":{"box":"There is a closed box on the ground."},
+		"name":"chamber",
+		"exits":[["South","house hall"]],
+		"description":"You are in an old chamber."
+	}, 
+	"dead end":
+	{
+		"items":{},
+		"name":"dead end",
+		"exits":[["South","hill"]],
+		"description":"You are at the end of the road. It was a long walk. You are hungry. There is nothing here."
+	},
+	"cave":
+	{
+		"items":{"dragon":"Look! It's an enormous dragon! It looks scary."},
+		"name":"cave",
+		"exits":[["South","hill"]],
+		"description":"You are in a cave. "
+	}
+
+}
