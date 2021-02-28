@@ -1,0 +1,16 @@
+Useful commands:
+
+look -> description of your surroundings
+go left/right/back/forward/north/east/south/west -> moving to wanted direction
+take item -> taking things from room
+inventory -> checking what objects you are carring
+put item -> putting things from your inventory
+
+restart -> restarting game without saving the state
+pause filename -> pause game and save current state to filename
+continue filename -> load state from filename
+quit -> end game
+
+If you are in the "lost room" the game has crushed and it's not your fault.
+
+Good luck!

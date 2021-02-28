@@ -1,0 +1,7 @@
+Welcome to Adventure text game!
+
+To play the game, type short phrases into the command line below.
+If you type the word "look," the game gives you a description of
+your surroundings.  Typing "inventory" or just "inv" tells you what you're
+carrying. "Take" and "put" helps you interact with
+objects. Type "help" at any time for game instructions.

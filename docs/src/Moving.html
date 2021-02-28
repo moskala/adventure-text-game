@@ -1,0 +1,125 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# OPTIONS -Wall #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{-|
+Module      : Moving
+Description : Przemieszczanie si&#281; mi&#281;dzy pokojami 
+
+Ten modu&#322; zawiera funkcje zwi&#261;zane z przemieszczaniem si&#281; mi&#281;dzy pokojami. 
+-}</span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Moving</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map.Strict</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">M</span></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.State</span></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Class</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="GameState.html"><span class="hs-identifier">GameState</span></a></span><span> </span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="RoomParser.html"><span class="hs-identifier">RoomParser</span></a></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; pokoju i wyszukuje go w typie danych gry. </span><span>
+</span><span id="line-19"></span><span class="hs-comment">-- Zwraca Just 'Room' lub 'Nothing' (w przypadku nie znalezienia).</span><span>
+</span><span id="line-20"></span><span class="annot"><a href="Moving.html#getRoom"><span class="hs-identifier hs-type">getRoom</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#RoomName"><span class="hs-identifier hs-type">RoomName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="RoomParser.html#Room"><span class="hs-identifier hs-type">Room</span></a></span><span> </span><span>
+</span><span id="line-21"></span><span id="getRoom"><span class="annot"><span class="annottext">getRoom :: RoomName -&gt; AdventureGame -&gt; Maybe Room
+</span><a href="Moving.html#getRoom"><span class="hs-identifier hs-var hs-var">getRoom</span></a></span></span><span> </span><span id="local-6989586621679123304"><span class="annot"><span class="annottext">roomName :: RoomName
+</span><a href="#local-6989586621679123304"><span class="hs-identifier hs-var">roomName</span></a></span></span><span> </span><span id="local-6989586621679123303"><span class="annot"><span class="annottext">game :: AdventureGame
+</span><a href="#local-6989586621679123303"><span class="hs-identifier hs-var">game</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; Map RoomName Room -&gt; Maybe Room
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">M.lookup</span></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123304"><span class="hs-identifier hs-var">roomName</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">AdventureGame -&gt; Map RoomName Room
+</span><a href="GameState.html#gameWorld"><span class="hs-identifier hs-var hs-var">gameWorld</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123303"><span class="hs-identifier hs-var">game</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- | Funkcja przyjmuje nazw&#281; pokoju i podmienia j&#261; jako nazw&#281; aktualnego pokoju w AdventureGame.</span><span>
+</span><span id="line-24"></span><span class="annot"><a href="Moving.html#changeRoom"><span class="hs-identifier hs-type">changeRoom</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#RoomName"><span class="hs-identifier hs-type">RoomName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span>
+</span><span id="line-25"></span><span id="changeRoom"><span class="annot"><span class="annottext">changeRoom :: RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Moving.html#changeRoom"><span class="hs-identifier hs-var hs-var">changeRoom</span></a></span></span><span> </span><span id="local-6989586621679123299"><span class="annot"><span class="annottext">room :: RoomName
+</span><a href="#local-6989586621679123299"><span class="hs-identifier hs-var">room</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span id="local-6989586621679123297"><span class="annot"><span class="annottext">w :: Map RoomName Room
+</span><a href="#local-6989586621679123297"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span id="local-6989586621679123296"><span class="annot"><span class="annottext">inv :: [RoomName]
+</span><a href="#local-6989586621679123296"><span class="hs-identifier hs-var">inv</span></a></span></span><span> </span><span class="hs-identifier">_</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Map RoomName Room -&gt; [RoomName] -&gt; RoomName -&gt; AdventureGame
+</span><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-var">AdventureGame</span></a></span><span> </span><span class="annot"><span class="annottext">Map RoomName Room
+</span><a href="#local-6989586621679123297"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">[RoomName]
+</span><a href="#local-6989586621679123296"><span class="hs-identifier hs-var">inv</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123299"><span class="hs-identifier hs-var">room</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- | Funkcja sprawdza czy istenieje z pokoju wyj&#347;cie w zadanym kierunku, </span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- je&#347;li wyj&#347;cie istnieje to zostaje zwr&#243;cona nazwa pokoju w monadzie 'Maybe'</span><span>
+</span><span id="line-29"></span><span class="annot"><a href="Moving.html#checkExit"><span class="hs-identifier hs-type">checkExit</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="RoomParser.html#RoomName"><span class="hs-identifier hs-type">RoomName</span></a></span><span> </span><span>
+</span><span id="line-30"></span><span id="checkExit"><span class="annot"><span class="annottext">checkExit :: Direction -&gt; AdventureGame -&gt; Maybe RoomName
+</span><a href="Moving.html#checkExit"><span class="hs-identifier hs-var hs-var">checkExit</span></a></span></span><span> </span><span id="local-6989586621679123294"><span class="annot"><span class="annottext">wantedDirection :: Direction
+</span><a href="#local-6989586621679123294"><span class="hs-identifier hs-var">wantedDirection</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-type">AdventureGame</span></a></span><span> </span><span id="local-6989586621679123293"><span class="annot"><span class="annottext">world :: Map RoomName Room
+</span><a href="#local-6989586621679123293"><span class="hs-identifier hs-var">world</span></a></span></span><span> </span><span class="hs-identifier">_</span><span> </span><span id="local-6989586621679123292"><span class="annot"><span class="annottext">currentRoom :: RoomName
+</span><a href="#local-6989586621679123292"><span class="hs-identifier hs-var">currentRoom</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RoomName -&gt; Map RoomName Room -&gt; Maybe Room
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">M.lookup</span></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123292"><span class="hs-identifier hs-var">currentRoom</span></a></span><span> </span><span class="annot"><span class="annottext">Map RoomName Room
+</span><a href="#local-6989586621679123293"><span class="hs-identifier hs-var">world</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Room -&gt; (Room -&gt; Maybe RoomName) -&gt; Maybe RoomName
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679123291"><span class="annot"><span class="annottext">room :: Room
+</span><a href="#local-6989586621679123291"><span class="hs-identifier hs-var">room</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Direction -&gt; Map Direction RoomName -&gt; Maybe RoomName
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">M.lookup</span></span><span> </span><span class="annot"><span class="annottext">Direction
+</span><a href="#local-6989586621679123294"><span class="hs-identifier hs-var">wantedDirection</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Room -&gt; Map Direction RoomName
+</span><a href="RoomParser.html#exits"><span class="hs-identifier hs-var hs-var">exits</span></a></span><span> </span><span class="annot"><span class="annottext">Room
+</span><a href="#local-6989586621679123291"><span class="hs-identifier hs-var">room</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- | Funkcja przyjmuje kierunek typu 'Direction'. </span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- Je&#347;li wykonanie ruchu w danym kierunku jest mo&#380;liwe stan gry zostaje zmodyfikowany poprzez wykonanie ruchu.</span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- W przeciwnym przypadki wypisywany jest odpowiedni komunikat. </span><span>
+</span><span id="line-35"></span><span class="annot"><a href="Moving.html#move"><span class="hs-identifier hs-type">move</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="RoomParser.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#GameIO"><span class="hs-identifier hs-type">GameIO</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-36"></span><span id="move"><span class="annot"><span class="annottext">move :: Direction -&gt; GameIO Bool
+</span><a href="Moving.html#move"><span class="hs-identifier hs-var hs-var">move</span></a></span></span><span> </span><span id="local-6989586621679123288"><span class="annot"><span class="annottext">direction :: Direction
+</span><a href="#local-6989586621679123288"><span class="hs-identifier hs-var">direction</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span> </span><span>
+</span><span id="line-37"></span><span>   </span><span id="local-6989586621679123287"><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123287"><span class="hs-identifier hs-var">advGame</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO AdventureGame
+forall (m :: * -&gt; *) s. Monad m =&gt; StateT s m s
+</span><span class="hs-identifier hs-var">get</span></span><span>
+</span><span id="line-38"></span><span>   </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Direction -&gt; AdventureGame -&gt; Maybe RoomName
+</span><a href="Moving.html#checkExit"><span class="hs-identifier hs-var">checkExit</span></a></span><span> </span><span class="annot"><span class="annottext">Direction
+</span><a href="#local-6989586621679123288"><span class="hs-identifier hs-var">direction</span></a></span><span> </span><span class="annot"><span class="annottext">AdventureGame
+</span><a href="#local-6989586621679123287"><span class="hs-identifier hs-var">advGame</span></a></span><span> </span><span class="hs-keyword">of</span><span> </span><span>
+</span><span id="line-39"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679123285"><span class="annot"><span class="annottext">roomName :: RoomName
+</span><a href="#local-6989586621679123285"><span class="hs-identifier hs-var">roomName</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(AdventureGame -&gt; AdventureGame) -&gt; StateT AdventureGame IO ()
+forall (m :: * -&gt; *) s. Monad m =&gt; (s -&gt; s) -&gt; StateT s m ()
+</span><span class="hs-identifier hs-var">modify'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RoomName -&gt; AdventureGame -&gt; AdventureGame
+</span><a href="Moving.html#changeRoom"><span class="hs-identifier hs-var">changeRoom</span></a></span><span> </span><span class="annot"><span class="annottext">RoomName
+</span><a href="#local-6989586621679123285"><span class="hs-identifier hs-var">roomName</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO ()
+-&gt; StateT AdventureGame IO () -&gt; StateT AdventureGame IO ()
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO ()
+</span><a href="Moving.html#showCurrentRoom"><span class="hs-identifier hs-var">showCurrentRoom</span></a></span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO () -&gt; GameIO Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-40"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">IO () -&gt; StateT AdventureGame IO ()
+forall (t :: (* -&gt; *) -&gt; * -&gt; *) (m :: * -&gt; *) a.
+(MonadTrans t, Monad m) =&gt;
+m a -&gt; t m a
+</span><span class="hs-identifier hs-var">lift</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="annot"><span class="hs-string">&quot;There is no way to go that direction.&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO () -&gt; GameIO Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- | Funkcja wypisuje na ekran pok&#243;j w kt&#243;rym aktualnie znajduje si&#281; gracz. </span><span>
+</span><span id="line-43"></span><span class="annot"><a href="Moving.html#showCurrentRoom"><span class="hs-identifier hs-type">showCurrentRoom</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameState.html#GameIO"><span class="hs-identifier hs-type">GameIO</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-44"></span><span id="showCurrentRoom"><span class="annot"><span class="annottext">showCurrentRoom :: StateT AdventureGame IO ()
+</span><a href="Moving.html#showCurrentRoom"><span class="hs-identifier hs-var hs-var">showCurrentRoom</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(AdventureGame -&gt; Room) -&gt; StateT AdventureGame IO Room
+forall (m :: * -&gt; *) s a. Monad m =&gt; (s -&gt; a) -&gt; StateT s m a
+</span><span class="hs-identifier hs-var">gets</span></span><span> </span><span class="annot"><span class="annottext">AdventureGame -&gt; Room
+</span><a href="GameState.html#getCurrentRoom"><span class="hs-identifier hs-var">getCurrentRoom</span></a></span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO Room
+-&gt; (Room -&gt; StateT AdventureGame IO ())
+-&gt; StateT AdventureGame IO ()
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">IO () -&gt; StateT AdventureGame IO ()
+forall (t :: (* -&gt; *) -&gt; * -&gt; *) (m :: * -&gt; *) a.
+(MonadTrans t, Monad m) =&gt;
+m a -&gt; t m a
+</span><span class="hs-identifier hs-var">lift</span></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; StateT AdventureGame IO ())
+-&gt; (Room -&gt; IO ()) -&gt; Room -&gt; StateT AdventureGame IO ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Room -&gt; IO ()
+forall a. Show a =&gt; a -&gt; IO ()
+</span><span class="hs-identifier hs-var">print</span></span></pre></body></html>

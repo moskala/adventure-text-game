@@ -1,0 +1,1 @@
+{"gameWorld":{"one":{"items":{"food":"There is food.","lamp":"On the table there is a lamp."},"name":"one","exits":[["North","In front of you there is open window."],["West","On the left there is huge door."]],"description":"You are in a large house for great spring."}},"inventory":[],"currentRoomName":"forest"}

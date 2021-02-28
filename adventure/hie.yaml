@@ -1,0 +1,6 @@
+cradle:
+  stack:
+    - path: "./app/Main.hs"
+      component: "adventure:exe:adventure-exe"
+    - path: "./src"
+      component: "adventure:lib"

@@ -1,0 +1,388 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# OPTIONS -Wall #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{-|
+Module      : CommandParserText
+Description : Modu&#322; parsuj&#261;cy komendy u&#380;ytkownika.
+
+W module znajduj&#261; si&#281; funkcje zwi&#261;zane z parsowaniem tekstu od u&#380;ytkownika. 
+Jest tu deklaracja typu danych 'Action', kt&#243;ry reprezentuje obs&#322;ugiwane przez program komendy. 
+Dane wpisywana przez u&#380;ytkownika s&#261; parsowane do odpowiednich akcji. Modu&#322; zawiera r&#243;wnie&#380; obs&#322;ugiwane synonimy bazowych komend.  
+Dane s&#261; przetwarzane w formacie Text. 
+-}</span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">CommandParserText</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Text.Parsec</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Text.Parsec.Text</span></span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Parser</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Class</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="RoomParser.html"><span class="hs-identifier">RoomParser</span></a></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="GameActions.html"><span class="hs-identifier">GameActions</span></a></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- | Typ danych reprezenuj&#261;cy akcje obs&#322;ugiwane przez program </span><span>
+</span><span id="line-24"></span><span class="hs-keyword">data</span><span> </span><span id="Action"><span class="annot"><a href="CommandParserText.html#Action"><span class="hs-identifier hs-var">Action</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Move"><span class="annot"><a href="CommandParserText.html#Move"><span class="hs-identifier hs-var">Move</span></a></span></span><span> </span><span class="annot"><a href="RoomParser.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span><span> </span><span class="hs-comment">-- ^ akcja przemieszczenia si&#281; mi&#281;dzy pokojami</span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Take"><span class="annot"><a href="CommandParserText.html#Take"><span class="hs-identifier hs-var">Take</span></a></span></span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="hs-comment">-- ^ akcja zabrania przedmiotu</span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Put"><span class="annot"><a href="CommandParserText.html#Put"><span class="hs-identifier hs-var">Put</span></a></span></span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span>  </span><span class="hs-comment">-- ^ akcja od&#322;o&#380;enia przedmiotu</span><span>
+</span><span id="line-27"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Help"><span class="annot"><a href="CommandParserText.html#Help"><span class="hs-identifier hs-var">Help</span></a></span></span><span> </span><span class="hs-comment">-- ^ wypisanie na konsol&#281; informacji pomocy</span><span>
+</span><span id="line-28"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Restart"><span class="annot"><a href="CommandParserText.html#Restart"><span class="hs-identifier hs-var">Restart</span></a></span></span><span> </span><span class="hs-comment">-- ^ funkcja restartuj&#261;ca stan gry</span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="SaveState"><span class="annot"><a href="CommandParserText.html#SaveState"><span class="hs-identifier hs-var">SaveState</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-comment">-- ^ zapisanie aktualnego stanu gry do podanego pliku</span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Continue"><span class="annot"><a href="CommandParserText.html#Continue"><span class="hs-identifier hs-var">Continue</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-comment">-- ^ wczytanie zapisanego stanu gry z podanego pliku</span><span>
+</span><span id="line-31"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Quit"><span class="annot"><a href="CommandParserText.html#Quit"><span class="hs-identifier hs-var">Quit</span></a></span></span><span> </span><span class="hs-comment">-- ^ wyj&#347;cie z programu</span><span>
+</span><span id="line-32"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Inventory"><span class="annot"><a href="CommandParserText.html#Inventory"><span class="hs-identifier hs-var">Inventory</span></a></span></span><span> </span><span class="hs-comment">-- ^ wypisanie posiadanych przedmiot&#243;w</span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Look"><span class="annot"><a href="CommandParserText.html#Look"><span class="hs-identifier hs-var">Look</span></a></span></span><span> </span><span class="hs-comment">-- ^ wypisanie opisu pokoju w kt&#243;rym gracz si&#281; znajduje</span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Use"><span class="annot"><a href="CommandParserText.html#Use"><span class="hs-identifier hs-var">Use</span></a></span></span><span> </span><span class="annot"><a href="RoomParser.html#ItemName"><span class="hs-identifier hs-type">ItemName</span></a></span><span> </span><span class="annot"><a href="GameActions.html#UserActionInput"><span class="hs-identifier hs-type">UserActionInput</span></a></span><span> </span><span class="hs-comment">-- ^ u&#380;ycie przedmiotu o danej nazwie w podany spos&#243;b</span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span id="local-6989586621679123726"><span id="local-6989586621679123728"><span id="local-6989586621679123730"><span class="annot"><span class="annottext">Int -&gt; Action -&gt; ShowS
+[Action] -&gt; ShowS
+Action -&gt; String
+(Int -&gt; Action -&gt; ShowS)
+-&gt; (Action -&gt; String) -&gt; ([Action] -&gt; ShowS) -&gt; Show Action
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Action] -&gt; ShowS
+$cshowList :: [Action] -&gt; ShowS
+show :: Action -&gt; String
+$cshow :: Action -&gt; String
+showsPrec :: Int -&gt; Action -&gt; ShowS
+$cshowsPrec :: Int -&gt; Action -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- | Akceptowalne synonimy komendy &quot;go&quot;.</span><span>
+</span><span id="line-38"></span><span class="annot"><a href="CommandParserText.html#goSynonyms"><span class="hs-identifier hs-type">goSynonyms</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span>
+</span><span id="line-39"></span><span id="goSynonyms"><span class="annot"><span class="annottext">goSynonyms :: [Text]
+</span><a href="CommandParserText.html#goSynonyms"><span class="hs-identifier hs-var hs-var">goSynonyms</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; [String] -&gt; [Text]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-string">&quot;go&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-string">&quot;move&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-string">&quot;walk&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-string">&quot;proceed&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-string">&quot;travel&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="hs-comment">-- | Akceptowalne synonimy komendy &quot;take&quot;.</span><span>
+</span><span id="line-42"></span><span class="annot"><a href="CommandParserText.html#takeSynonyms"><span class="hs-identifier hs-type">takeSynonyms</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span>
+</span><span id="line-43"></span><span id="takeSynonyms"><span class="annot"><span class="annottext">takeSynonyms :: [Text]
+</span><a href="CommandParserText.html#takeSynonyms"><span class="hs-identifier hs-var hs-var">takeSynonyms</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; [String] -&gt; [Text]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-string">&quot;take&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-string">&quot;pick&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-string">&quot;grab&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- | Akceptowalne synonimy komendy &quot;put&quot;.</span><span>
+</span><span id="line-46"></span><span class="annot"><a href="CommandParserText.html#putSynonyms"><span class="hs-identifier hs-type">putSynonyms</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span>
+</span><span id="line-47"></span><span id="putSynonyms"><span class="annot"><span class="annottext">putSynonyms :: [Text]
+</span><a href="CommandParserText.html#putSynonyms"><span class="hs-identifier hs-var hs-var">putSynonyms</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; [String] -&gt; [Text]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-string">&quot;put&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-string">&quot;leave&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- | Akceptowalne synonimy komendy &quot;inventory&quot;.</span><span>
+</span><span id="line-50"></span><span class="annot"><a href="CommandParserText.html#inventorySynonyms"><span class="hs-identifier hs-type">inventorySynonyms</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span>
+</span><span id="line-51"></span><span id="inventorySynonyms"><span class="annot"><span class="annottext">inventorySynonyms :: [Text]
+</span><a href="CommandParserText.html#inventorySynonyms"><span class="hs-identifier hs-var hs-var">inventorySynonyms</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; [String] -&gt; [Text]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-string">&quot;inventory&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-string">&quot;inv&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- | Funkcja 'findAction' przyjmuje tablic&#281; wyraz&#243;w i pr&#243;buje dopasowa&#263; pierwszy wyraz do odpowiedniej komendy (opr&#243;cz komendy 'Use'). </span><span>
+</span><span id="line-54"></span><span class="hs-comment">-- Je&#347;li nast&#261;pi dopasowanie zwracana jest opakowana odpowiednia akcja, w razie potrzeby z jej argumentem.</span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- Je&#347;li nie zajdzie dopasowanie zwracane jest 'Nothing'.</span><span>
+</span><span id="line-56"></span><span class="annot"><a href="CommandParserText.html#findAction"><span class="hs-identifier hs-type">findAction</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="CommandParserText.html#Action"><span class="hs-identifier hs-type">Action</span></a></span><span>
+</span><span id="line-57"></span><span id="findAction"><span class="annot"><span class="annottext">findAction :: [Text] -&gt; Maybe Action
+</span><a href="CommandParserText.html#findAction"><span class="hs-identifier hs-var hs-var">findAction</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679123718"><span class="annot"><span class="annottext">command :: Text
+</span><a href="#local-6989586621679123718"><span class="hs-identifier hs-var">command</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679123717"><span class="annot"><span class="annottext">arg :: Text
+</span><a href="#local-6989586621679123717"><span class="hs-identifier hs-var">arg</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="hs-identifier">_</span><span class="hs-special">)</span><span> </span><span>
+</span><span id="line-58"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123718"><span class="hs-identifier hs-var">command</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Text] -&gt; Bool
+forall (t :: * -&gt; *) a. (Foldable t, Eq a) =&gt; a -&gt; t a -&gt; Bool
+</span><span class="hs-operator hs-var">`elem`</span></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="CommandParserText.html#goSynonyms"><span class="hs-identifier hs-var">goSynonyms</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Direction -&gt; Action) -&gt; Maybe (Direction -&gt; Action)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Direction -&gt; Action
+</span><a href="CommandParserText.html#Move"><span class="hs-identifier hs-var">Move</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe (Direction -&gt; Action) -&gt; Maybe Direction -&gt; Maybe Action
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Maybe Direction
+</span><a href="CommandParserText.html#parseDirection"><span class="hs-identifier hs-var">parseDirection</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123717"><span class="hs-identifier hs-var">arg</span></a></span><span>
+</span><span id="line-59"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123718"><span class="hs-identifier hs-var">command</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Text] -&gt; Bool
+forall (t :: * -&gt; *) a. (Foldable t, Eq a) =&gt; a -&gt; t a -&gt; Bool
+</span><span class="hs-operator hs-var">`elem`</span></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="CommandParserText.html#takeSynonyms"><span class="hs-identifier hs-var">takeSynonyms</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Maybe Action
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Action -&gt; Maybe Action) -&gt; Action -&gt; Maybe Action
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Action
+</span><a href="CommandParserText.html#Take"><span class="hs-identifier hs-var">Take</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123717"><span class="hs-identifier hs-var">arg</span></a></span><span>
+</span><span id="line-60"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123718"><span class="hs-identifier hs-var">command</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Text] -&gt; Bool
+forall (t :: * -&gt; *) a. (Foldable t, Eq a) =&gt; a -&gt; t a -&gt; Bool
+</span><span class="hs-operator hs-var">`elem`</span></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="CommandParserText.html#putSynonyms"><span class="hs-identifier hs-var">putSynonyms</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Maybe Action
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Action -&gt; Maybe Action) -&gt; Action -&gt; Maybe Action
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Action
+</span><a href="CommandParserText.html#Put"><span class="hs-identifier hs-var">Put</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123717"><span class="hs-identifier hs-var">arg</span></a></span><span>
+</span><span id="line-61"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123718"><span class="hs-identifier hs-var">command</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;save&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Maybe Action
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Action -&gt; Maybe Action) -&gt; Action -&gt; Maybe Action
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Action
+</span><a href="CommandParserText.html#SaveState"><span class="hs-identifier hs-var">SaveState</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Action) -&gt; String -&gt; Action
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; String
+</span><span class="hs-identifier hs-var">T.unpack</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123717"><span class="hs-identifier hs-var">arg</span></a></span><span>   </span><span>
+</span><span id="line-62"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123718"><span class="hs-identifier hs-var">command</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;continue&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Maybe Action
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Action -&gt; Maybe Action) -&gt; Action -&gt; Maybe Action
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Action
+</span><a href="CommandParserText.html#Continue"><span class="hs-identifier hs-var">Continue</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Action) -&gt; String -&gt; Action
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; String
+</span><span class="hs-identifier hs-var">T.unpack</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123717"><span class="hs-identifier hs-var">arg</span></a></span><span>
+</span><span id="line-63"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Action
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span>
+</span><span id="line-64"></span><span class="annot"><a href="CommandParserText.html#findAction"><span class="hs-identifier hs-var">findAction</span></a></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679123713"><span class="annot"><span class="annottext">command :: Text
+</span><a href="#local-6989586621679123713"><span class="hs-identifier hs-var">command</span></a></span></span><span class="hs-special">]</span><span> </span><span>
+</span><span id="line-65"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123713"><span class="hs-identifier hs-var">command</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;look&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Maybe Action
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Action
+</span><a href="CommandParserText.html#Look"><span class="hs-identifier hs-var">Look</span></a></span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123713"><span class="hs-identifier hs-var">command</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;help&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Maybe Action
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Action
+</span><a href="CommandParserText.html#Help"><span class="hs-identifier hs-var">Help</span></a></span><span> </span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123713"><span class="hs-identifier hs-var">command</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;quit&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Maybe Action
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Action
+</span><a href="CommandParserText.html#Quit"><span class="hs-identifier hs-var">Quit</span></a></span><span>
+</span><span id="line-68"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123713"><span class="hs-identifier hs-var">command</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;restart&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Maybe Action
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Action
+</span><a href="CommandParserText.html#Restart"><span class="hs-identifier hs-var">Restart</span></a></span><span> </span><span>
+</span><span id="line-69"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123713"><span class="hs-identifier hs-var">command</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Text] -&gt; Bool
+forall (t :: * -&gt; *) a. (Foldable t, Eq a) =&gt; a -&gt; t a -&gt; Bool
+</span><span class="hs-operator hs-var">`elem`</span></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="CommandParserText.html#inventorySynonyms"><span class="hs-identifier hs-var">inventorySynonyms</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Maybe Action
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Action
+</span><a href="CommandParserText.html#Inventory"><span class="hs-identifier hs-var">Inventory</span></a></span><span>
+</span><span id="line-70"></span><span class="annot"><a href="CommandParserText.html#findAction"><span class="hs-identifier hs-var">findAction</span></a></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Action
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span class="hs-comment">-- | Funkcja 'wordParser' parsuje kolejne litery s&#322;owa i zamiena je na lowercase.</span><span>
+</span><span id="line-73"></span><span class="hs-comment">-- Funckja korzysta z parsera importowanego z modu&#322;u 'Text.Parsec.Text'.</span><span>
+</span><span id="line-74"></span><span class="annot"><a href="CommandParserText.html#wordParser"><span class="hs-identifier hs-type">wordParser</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-75"></span><span id="wordParser"><span class="annot"><span class="annottext">wordParser :: Parser Text
+</span><a href="CommandParserText.html#wordParser"><span class="hs-identifier hs-var hs-var">wordParser</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.toLower</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; Parser Text -&gt; Parser Text
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; ParsecT Text () Identity String -&gt; Parser Text
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">ParsecT Text () Identity Char -&gt; ParsecT Text () Identity String
+forall s (m :: * -&gt; *) t u a.
+Stream s m t =&gt;
+ParsecT s u m a -&gt; ParsecT s u m [a]
+</span><span class="hs-identifier hs-var">many1</span></span><span> </span><span class="annot"><span class="annottext">ParsecT Text () Identity Char
+forall s (m :: * -&gt; *) u. Stream s m Char =&gt; ParsecT s u m Char
+</span><span class="hs-identifier hs-var">letter</span></span><span class="hs-special">)</span><span>
+</span><span id="line-76"></span><span>
+</span><span id="line-77"></span><span class="hs-comment">-- | Funkcja parsuje wej&#347;cie rozdzielaj&#261;c dane na podstawie spacji, aby uzyska&#263; osobne s&#322;owa z polecenia. </span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- Ka&#380;de s&#322;owo jest parsowane przez funckj&#281; 'wordParser'.</span><span>
+</span><span id="line-79"></span><span class="annot"><a href="CommandParserText.html#inputParser"><span class="hs-identifier hs-type">inputParser</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span>
+</span><span id="line-80"></span><span id="inputParser"><span class="annot"><span class="annottext">inputParser :: Parser [Text]
+</span><a href="CommandParserText.html#inputParser"><span class="hs-identifier hs-var hs-var">inputParser</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Text
+</span><a href="CommandParserText.html#wordParser"><span class="hs-identifier hs-var">wordParser</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text -&gt; ParsecT Text () Identity Char -&gt; Parser [Text]
+forall s (m :: * -&gt; *) t u a sep.
+Stream s m t =&gt;
+ParsecT s u m a -&gt; ParsecT s u m sep -&gt; ParsecT s u m [a]
+</span><span class="hs-operator hs-var">`sepBy`</span></span><span> </span><span class="annot"><span class="annottext">ParsecT Text () Identity Char
+forall s (m :: * -&gt; *) u. Stream s m Char =&gt; ParsecT s u m Char
+</span><span class="hs-identifier hs-var">space</span></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span class="hs-comment">-- | Funkcja parsuje wej&#347;cie za pomoc&#261; 'inputParser' oraz pr&#243;buje znale&#378;&#263; odpowiedni&#261; akcj&#281; dzi&#281;ki funkcji 'findAction'. </span><span>
+</span><span id="line-83"></span><span class="annot"><a href="CommandParserText.html#commandParser"><span class="hs-identifier hs-type">commandParser</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="CommandParserText.html#Action"><span class="hs-identifier hs-type">Action</span></a></span><span>
+</span><span id="line-84"></span><span id="commandParser"><span class="annot"><span class="annottext">commandParser :: Parser Action
+</span><a href="CommandParserText.html#commandParser"><span class="hs-identifier hs-var hs-var">commandParser</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser [Text]
+</span><a href="CommandParserText.html#inputParser"><span class="hs-identifier hs-var">inputParser</span></a></span><span> </span><span class="annot"><span class="annottext">Parser [Text] -&gt; ([Text] -&gt; Parser Action) -&gt; Parser Action
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679123703"><span class="annot"><span class="annottext">x :: [Text]
+</span><a href="#local-6989586621679123703"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Maybe Action
+</span><a href="CommandParserText.html#findAction"><span class="hs-identifier hs-var">findAction</span></a></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679123703"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-85"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679123702"><span class="annot"><span class="annottext">action :: Action
+</span><a href="#local-6989586621679123702"><span class="hs-identifier hs-var">action</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Identity Action -&gt; Parser Action
+forall (t :: (* -&gt; *) -&gt; * -&gt; *) (m :: * -&gt; *) a.
+(MonadTrans t, Monad m) =&gt;
+m a -&gt; t m a
+</span><span class="hs-identifier hs-var">lift</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Action -&gt; Identity Action
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Action
+</span><a href="#local-6989586621679123702"><span class="hs-identifier hs-var">action</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-86"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Nothing</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Parser Action
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="hs-string">&quot;Not known command.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span class="hs-comment">-- | Funkcja parsuje wej&#347;cie poprzez pr&#243;b&#281; dopasowania go do komend znajduj&#261;cych si&#281; w zbiorze typu 'ActionsMap'. </span><span>
+</span><span id="line-89"></span><span class="hs-comment">-- Je&#347;li dopasowanie si&#281; powiedzie zwracana jest opakowana akcja 'Use' z odpowiednimi argumentami. </span><span>
+</span><span id="line-90"></span><span class="hs-comment">-- W przeciwnym przypadku zwracane jest 'Nothing'.</span><span>
+</span><span id="line-91"></span><span class="annot"><a href="CommandParserText.html#parseActionFromMap"><span class="hs-identifier hs-type">parseActionFromMap</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-type">ActionsMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="CommandParserText.html#Action"><span class="hs-identifier hs-type">Action</span></a></span><span>
+</span><span id="line-92"></span><span id="parseActionFromMap"><span class="annot"><span class="annottext">parseActionFromMap :: Text -&gt; ActionsMap -&gt; Maybe Action
+</span><a href="CommandParserText.html#parseActionFromMap"><span class="hs-identifier hs-var hs-var">parseActionFromMap</span></a></span></span><span> </span><span id="local-6989586621679123699"><span class="annot"><span class="annottext">input :: Text
+</span><a href="#local-6989586621679123699"><span class="hs-identifier hs-var">input</span></a></span></span><span> </span><span id="local-6989586621679123698"><span class="annot"><span class="annottext">actions :: ActionsMap
+</span><a href="#local-6989586621679123698"><span class="hs-identifier hs-var">actions</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Text -&gt; ActionsMap -&gt; Bool
+</span><a href="GameActions.html#checkInputActionsMap"><span class="hs-identifier hs-var">checkInputActionsMap</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123696"><span class="hs-identifier hs-var">command</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123698"><span class="hs-identifier hs-var">actions</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Int
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Int
+</span><span class="hs-identifier hs-var">length</span></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679123693"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="hs-number">1</span></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Maybe Action
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Action
+</span><a href="CommandParserText.html#Use"><span class="hs-identifier hs-var">Use</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123691"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123696"><span class="hs-identifier hs-var">command</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Maybe Action
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-93"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-94"></span><span>        </span><span id="local-6989586621679123696"><span class="annot"><span class="annottext">command :: Text
+</span><a href="#local-6989586621679123696"><span class="hs-identifier hs-var hs-var">command</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.toLower</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123699"><span class="hs-identifier hs-var">input</span></a></span><span>
+</span><span id="line-95"></span><span>        </span><span id="local-6989586621679123693"><span class="annot"><span class="annottext">w :: [Text]
+</span><a href="#local-6989586621679123693"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="hs-identifier">_</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679123691"><span class="annot"><span class="annottext">y :: Text
+</span><a href="#local-6989586621679123691"><span class="hs-identifier hs-var">y</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="hs-identifier">_</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Text]
+</span><span class="hs-identifier hs-var">T.words</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123696"><span class="hs-identifier hs-var">command</span></a></span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span class="hs-comment">-- | Funkcja przyjmuje zbi&#243;r akcji typu 'ActionsMap' i wej&#347;cie od u&#380;ytkownika. </span><span>
+</span><span id="line-98"></span><span class="hs-comment">-- Wej&#347;cie jest parsowane z u&#380;yciem funkcji 'commandParser'. </span><span>
+</span><span id="line-99"></span><span class="hs-comment">-- Je&#347;li nie zostanie prawid&#322;owo sparsowane to wej&#347;cie mo&#380;e zosta&#263; dopasowane do akcji ze zbioru typu 'ActionsMap'. </span><span>
+</span><span id="line-100"></span><span class="hs-comment">-- Funcja zwraca Right 'Action' je&#347;li uda&#322;o si&#281; dopasowa&#263; akcj&#281;, lub Left 'String' je&#347;li wyst&#261;pi&#322; b&#322;&#261;d lub nie nast&#261;pi&#322;o &#380;adne dopasowanie. </span><span>
+</span><span id="line-101"></span><span class="annot"><a href="CommandParserText.html#parseCommand"><span class="hs-identifier hs-type">parseCommand</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-type">ActionsMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">ParseError</span></span><span> </span><span class="annot"><a href="CommandParserText.html#Action"><span class="hs-identifier hs-type">Action</span></a></span><span>
+</span><span id="line-102"></span><span id="parseCommand"><span class="annot"><span class="annottext">parseCommand :: ActionsMap -&gt; Text -&gt; Either ParseError Action
+</span><a href="CommandParserText.html#parseCommand"><span class="hs-identifier hs-var hs-var">parseCommand</span></a></span></span><span> </span><span id="local-6989586621679123688"><span class="annot"><span class="annottext">actions :: ActionsMap
+</span><a href="#local-6989586621679123688"><span class="hs-identifier hs-var">actions</span></a></span></span><span> </span><span id="local-6989586621679123687"><span class="annot"><span class="annottext">input :: Text
+</span><a href="#local-6989586621679123687"><span class="hs-identifier hs-var">input</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Parser Action -&gt; String -&gt; Text -&gt; Either ParseError Action
+forall s t a.
+Stream s Identity t =&gt;
+Parsec s () a -&gt; String -&gt; s -&gt; Either ParseError a
+</span><span class="hs-identifier hs-var">parse</span></span><span> </span><span class="annot"><span class="annottext">Parser Action
+</span><a href="CommandParserText.html#commandParser"><span class="hs-identifier hs-var">commandParser</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123687"><span class="hs-identifier hs-var">input</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-103"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679123685"><span class="annot"><span class="annottext">action :: Action
+</span><a href="#local-6989586621679123685"><span class="hs-identifier hs-var">action</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Either ParseError Action
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">Action
+</span><a href="#local-6989586621679123685"><span class="hs-identifier hs-var">action</span></a></span><span>
+</span><span id="line-104"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679123684"><span class="annot"><span class="annottext">err :: ParseError
+</span><a href="#local-6989586621679123684"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either ParseError Action
+-&gt; (Action -&gt; Either ParseError Action)
+-&gt; Maybe Action
+-&gt; Either ParseError Action
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ParseError -&gt; Either ParseError Action
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">ParseError
+</span><a href="#local-6989586621679123684"><span class="hs-identifier hs-var">err</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Action -&gt; Either ParseError Action
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; ActionsMap -&gt; Maybe Action
+</span><a href="CommandParserText.html#parseActionFromMap"><span class="hs-identifier hs-var">parseActionFromMap</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123687"><span class="hs-identifier hs-var">input</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123688"><span class="hs-identifier hs-var">actions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-105"></span><span>
+</span><span id="line-106"></span><span class="hs-comment">-- | Funkcja przyjmuje dane Text i pr&#243;buje dopasowa&#263; je do typu 'Direction'. </span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- Zwracane jest Just 'Direction' lub Nothing, je&#347;li nie nast&#261;pi&#322;o przypisanie. </span><span>
+</span><span id="line-108"></span><span class="annot"><a href="CommandParserText.html#parseDirection"><span class="hs-identifier hs-type">parseDirection</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="RoomParser.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span><span>
+</span><span id="line-109"></span><span id="parseDirection"><span class="annot"><span class="annottext">parseDirection :: Text -&gt; Maybe Direction
+</span><a href="CommandParserText.html#parseDirection"><span class="hs-identifier hs-var hs-var">parseDirection</span></a></span></span><span> </span><span id="local-6989586621679123682"><span class="annot"><span class="annottext">x :: Text
+</span><a href="#local-6989586621679123682"><span class="hs-identifier hs-var">x</span></a></span></span><span>
+</span><span id="line-110"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123682"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;north&quot;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123682"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;forward&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Direction -&gt; Maybe Direction
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Direction
+</span><a href="RoomParser.html#North"><span class="hs-identifier hs-var">North</span></a></span><span>
+</span><span id="line-111"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123682"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;east&quot;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123682"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;right&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Direction -&gt; Maybe Direction
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Direction
+</span><a href="RoomParser.html#East"><span class="hs-identifier hs-var">East</span></a></span><span>
+</span><span id="line-112"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123682"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;south&quot;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123682"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;back&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Direction -&gt; Maybe Direction
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Direction
+</span><a href="RoomParser.html#South"><span class="hs-identifier hs-var">South</span></a></span><span>
+</span><span id="line-113"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123682"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;west&quot;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123682"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="hs-string">&quot;left&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Direction -&gt; Maybe Direction
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Direction
+</span><a href="RoomParser.html#West"><span class="hs-identifier hs-var">West</span></a></span><span>
+</span><span id="line-114"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Direction
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span></pre></body></html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# OPTIONS -Wall #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{-|
+Module      : GameExe
+Description : Funkcje s&#322;u&#380;&#261;ce do prowadzenia gry. 
+
+Ten modu&#322; zawiera definicje funkcji s&#322;u&#380;&#261;cych do prowadzenia gry - parsowania i wykonywania akcji od gracza.  
+-}</span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">GameExe</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="GameState.html"><span class="hs-identifier">GameState</span></a></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="CommandParserText.html"><span class="hs-identifier">CommandParserText</span></a></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="RoomParser.html"><span class="hs-identifier">RoomParser</span></a></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Class</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Text.Parsec</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.State</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Moving.html"><span class="hs-identifier">Moving</span></a></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Items.html"><span class="hs-identifier">Items</span></a></span><span> </span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="GameActions.html"><span class="hs-identifier">GameActions</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- | Funkcja 'readCommand' parsuje wej&#347;cie od u&#380;ytkownika. </span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- W przypadku sukcesu zwracana jest odpowiednia akcja. </span><span>
+</span><span id="line-26"></span><span class="annot"><a href="GameExe.html#readCommand"><span class="hs-identifier hs-type">readCommand</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-type">ActionsMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#GameIO"><span class="hs-identifier hs-type">GameIO</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">ParseError</span></span><span> </span><span class="annot"><a href="CommandParserText.html#Action"><span class="hs-identifier hs-type">Action</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span id="readCommand"><span class="annot"><span class="annottext">readCommand :: ActionsMap -&gt; GameIO (Either ParseError Action)
+</span><a href="GameExe.html#readCommand"><span class="hs-identifier hs-var hs-var">readCommand</span></a></span></span><span> </span><span id="local-6989586621679123861"><span class="annot"><span class="annottext">actions :: ActionsMap
+</span><a href="#local-6989586621679123861"><span class="hs-identifier hs-var">actions</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO String -&gt; StateT AdventureGame IO String
+forall (t :: (* -&gt; *) -&gt; * -&gt; *) (m :: * -&gt; *) a.
+(MonadTrans t, Monad m) =&gt;
+m a -&gt; t m a
+</span><span class="hs-identifier hs-var">lift</span></span><span> </span><span class="annot"><span class="annottext">IO String
+</span><span class="hs-identifier hs-var">getLine</span></span><span> </span><span class="annot"><span class="annottext">StateT AdventureGame IO String
+-&gt; (String -&gt; GameIO (Either ParseError Action))
+-&gt; GameIO (Either ParseError Action)
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Either ParseError Action -&gt; GameIO (Either ParseError Action)
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Either ParseError Action -&gt; GameIO (Either ParseError Action))
+-&gt; (String -&gt; Either ParseError Action)
+-&gt; String
+-&gt; GameIO (Either ParseError Action)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ActionsMap -&gt; Text -&gt; Either ParseError Action
+</span><a href="CommandParserText.html#parseCommand"><span class="hs-identifier hs-var">parseCommand</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123861"><span class="hs-identifier hs-var">actions</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Either ParseError Action)
+-&gt; (String -&gt; Text) -&gt; String -&gt; Either ParseError Action
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- | Funkcja 'mainLoop' pe&#322;ni rol&#281; p&#281;tli, kt&#243;ra odpowiada za ci&#261;g&#322;e przetwarzanie i wykonywanie komend. </span><span>
+</span><span id="line-30"></span><span class="hs-comment">-- Za ka&#380;dym razem sprawdzany jest wynik wykoniania akcji, kt&#243;ry informuje o tym, czy gra powinna by&#263; kontynuowana. </span><span>
+</span><span id="line-31"></span><span class="annot"><a href="GameExe.html#mainLoop"><span class="hs-identifier hs-type">mainLoop</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-type">ActionsMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#GameIO"><span class="hs-identifier hs-type">GameIO</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span id="mainLoop"><span class="annot"><span class="annottext">mainLoop :: ActionsMap -&gt; GameIO ()
+</span><a href="GameExe.html#mainLoop"><span class="hs-identifier hs-var hs-var">mainLoop</span></a></span></span><span> </span><span id="local-6989586621679123854"><span class="annot"><span class="annottext">actions :: ActionsMap
+</span><a href="#local-6989586621679123854"><span class="hs-identifier hs-var">actions</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>    </span><span>
+</span><span id="line-33"></span><span>    </span><span id="local-6989586621679123853"><span class="annot"><span class="annottext">Either ParseError Action
+</span><a href="#local-6989586621679123853"><span class="hs-identifier hs-var">result</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ActionsMap -&gt; GameIO (Either ParseError Action)
+</span><a href="GameExe.html#readCommand"><span class="hs-identifier hs-var">readCommand</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123854"><span class="hs-identifier hs-var">actions</span></a></span><span>
+</span><span id="line-34"></span><span>    </span><span id="local-6989586621679123852"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679123852"><span class="hs-identifier hs-var">continue</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either ParseError Action
+</span><a href="#local-6989586621679123853"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="hs-keyword">of</span><span> </span><span>
+</span><span id="line-35"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679123851"><span class="annot"><span class="annottext">action :: Action
+</span><a href="#local-6989586621679123851"><span class="hs-identifier hs-var">action</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">ActionsMap -&gt; Action -&gt; GameIO Bool
+</span><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var">executeAction</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123854"><span class="hs-identifier hs-var">actions</span></a></span><span> </span><span class="annot"><span class="annottext">Action
+</span><a href="#local-6989586621679123851"><span class="hs-identifier hs-var">action</span></a></span><span>
+</span><span id="line-36"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">IO Bool -&gt; GameIO Bool
+forall (t :: (* -&gt; *) -&gt; * -&gt; *) (m :: * -&gt; *) a.
+(MonadTrans t, Monad m) =&gt;
+m a -&gt; t m a
+</span><span class="hs-identifier hs-var">lift</span></span><span> </span><span class="annot"><span class="annottext">(IO Bool -&gt; GameIO Bool) -&gt; IO Bool -&gt; GameIO Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="annot"><span class="hs-string">&quot;I don't know that.&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO () -&gt; IO Bool -&gt; IO Bool
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; IO Bool
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-37"></span><span>    </span><span class="annot"><span class="annottext">Bool -&gt; GameIO () -&gt; GameIO ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">when</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679123852"><span class="hs-identifier hs-var">continue</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ActionsMap -&gt; GameIO ()
+</span><a href="GameExe.html#mainLoop"><span class="hs-identifier hs-var">mainLoop</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123854"><span class="hs-identifier hs-var">actions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- | Funkcja 'startGame' s&#322;u&#380;y do rozpocz&#281;cia gry. </span><span>
+</span><span id="line-40"></span><span class="hs-comment">-- &#321;adowane i parsowne s&#261; odpowiednie pliki, za pomoc&#261; funkcji 'mainLoop' przetwarzane s&#261; kolejne komendy. </span><span>
+</span><span id="line-41"></span><span class="annot"><a href="GameExe.html#startGame"><span class="hs-identifier hs-type">startGame</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span id="startGame"><span class="annot"><span class="annottext">startGame :: IO ()
+</span><a href="GameExe.html#startGame"><span class="hs-identifier hs-var hs-var">startGame</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span> </span><span>
+</span><span id="line-43"></span><span>    </span><span class="annot"><span class="annottext">IO ()
+</span><a href="GameState.html#showWelcome"><span class="hs-identifier hs-var">showWelcome</span></a></span><span>
+</span><span id="line-44"></span><span>    </span><span id="local-6989586621679123845"><span class="annot"><span class="annottext">Either String (Map Text Room)
+</span><a href="#local-6989586621679123845"><span class="hs-identifier hs-var">roomsParsed</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO (Either String (Map Text Room))
+</span><a href="RoomParser.html#parseGameRomms"><span class="hs-identifier hs-var">parseGameRomms</span></a></span><span>
+</span><span id="line-45"></span><span>    </span><span id="local-6989586621679123843"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123843"><span class="hs-identifier hs-var">startRoom</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO Text
+</span><a href="RoomParser.html#parseStartRoom"><span class="hs-identifier hs-var">parseStartRoom</span></a></span><span>   </span><span>
+</span><span id="line-46"></span><span>    </span><span id="local-6989586621679123841"><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123841"><span class="hs-identifier hs-var">actions</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO ActionsMap
+</span><a href="GameActions.html#parseActions"><span class="hs-identifier hs-var">parseActions</span></a></span><span>     </span><span>
+</span><span id="line-47"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either String (Map Text Room)
+</span><a href="#local-6989586621679123845"><span class="hs-identifier hs-var">roomsParsed</span></a></span><span> </span><span class="hs-keyword">of</span><span> </span><span>
+</span><span id="line-48"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679123839"><span class="annot"><span class="annottext">err :: String
+</span><a href="#local-6989586621679123839"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679123839"><span class="hs-identifier hs-var">err</span></a></span><span> </span><span>
+</span><span id="line-49"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679123838"><span class="annot"><span class="annottext">rooms :: Map Text Room
+</span><a href="#local-6989586621679123838"><span class="hs-identifier hs-var">rooms</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Map Text Room -&gt; IO ()
+</span><a href="GameState.html#showFirstRoom"><span class="hs-identifier hs-var">showFirstRoom</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123843"><span class="hs-identifier hs-var">startRoom</span></a></span><span> </span><span class="annot"><span class="annottext">Map Text Room
+</span><a href="#local-6989586621679123838"><span class="hs-identifier hs-var">rooms</span></a></span><span> </span><span class="annot"><span class="annottext">IO () -&gt; IO () -&gt; IO ()
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">GameIO () -&gt; AdventureGame -&gt; IO ()
+forall (m :: * -&gt; *) s a. Monad m =&gt; StateT s m a -&gt; s -&gt; m a
+</span><span class="hs-identifier hs-var">evalStateT</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ActionsMap -&gt; GameIO ()
+</span><a href="GameExe.html#mainLoop"><span class="hs-identifier hs-var">mainLoop</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123841"><span class="hs-identifier hs-var">actions</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map Text Room -&gt; [Text] -&gt; Text -&gt; AdventureGame
+</span><a href="GameState.html#AdventureGame"><span class="hs-identifier hs-var">AdventureGame</span></a></span><span> </span><span class="annot"><span class="annottext">Map Text Room
+</span><a href="#local-6989586621679123838"><span class="hs-identifier hs-var">rooms</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123843"><span class="hs-identifier hs-var">startRoom</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- | Funkcja 'executeAction' s&#322;u&#380;y wykonaniu danej akcji. </span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- W zwracanej monadzie jest warto&#347;&#263; Bool, kt&#243;ra informuje czy gra powinna si&#281; toczy&#263; dalej, czy zako&#324;czy&#263;. </span><span>
+</span><span id="line-53"></span><span class="annot"><a href="GameExe.html#executeAction"><span class="hs-identifier hs-type">executeAction</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameActions.html#ActionsMap"><span class="hs-identifier hs-type">ActionsMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="CommandParserText.html#Action"><span class="hs-identifier hs-type">Action</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GameState.html#GameIO"><span class="hs-identifier hs-type">GameIO</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-54"></span><span id="executeAction"><span class="annot"><span class="annottext">executeAction :: ActionsMap -&gt; Action -&gt; GameIO Bool
+</span><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var hs-var">executeAction</span></a></span></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="CommandParserText.html#Move"><span class="hs-identifier hs-type">Move</span></a></span><span> </span><span id="local-6989586621679123833"><span class="annot"><span class="annottext">direction :: Direction
+</span><a href="#local-6989586621679123833"><span class="hs-identifier hs-var">direction</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Direction -&gt; GameIO Bool
+</span><a href="Moving.html#move"><span class="hs-identifier hs-var">move</span></a></span><span> </span><span class="annot"><span class="annottext">Direction
+</span><a href="#local-6989586621679123833"><span class="hs-identifier hs-var">direction</span></a></span><span>
+</span><span id="line-55"></span><span class="annot"><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var">executeAction</span></a></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="CommandParserText.html#Take"><span class="hs-identifier hs-type">Take</span></a></span><span> </span><span id="local-6989586621679123830"><span class="annot"><span class="annottext">item :: Text
+</span><a href="#local-6989586621679123830"><span class="hs-identifier hs-var">item</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; GameIO Bool
+</span><a href="Items.html#takeItem"><span class="hs-identifier hs-var">takeItem</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123830"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span>
+</span><span id="line-56"></span><span class="annot"><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var">executeAction</span></a></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="CommandParserText.html#Put"><span class="hs-identifier hs-type">Put</span></a></span><span> </span><span id="local-6989586621679123827"><span class="annot"><span class="annottext">item :: Text
+</span><a href="#local-6989586621679123827"><span class="hs-identifier hs-var">item</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; GameIO Bool
+</span><a href="Items.html#putItem"><span class="hs-identifier hs-var">putItem</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123827"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span>
+</span><span id="line-57"></span><span class="annot"><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var">executeAction</span></a></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="annot"><a href="CommandParserText.html#Help"><span class="hs-identifier hs-type">Help</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GameIO Bool
+</span><a href="GameState.html#showHelp"><span class="hs-identifier hs-var">showHelp</span></a></span><span> </span><span>
+</span><span id="line-58"></span><span class="annot"><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var">executeAction</span></a></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="annot"><a href="CommandParserText.html#Restart"><span class="hs-identifier hs-type">Restart</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GameIO Bool
+</span><a href="GameState.html#restartGame"><span class="hs-identifier hs-var">restartGame</span></a></span><span> </span><span>
+</span><span id="line-59"></span><span class="annot"><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var">executeAction</span></a></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="CommandParserText.html#SaveState"><span class="hs-identifier hs-type">SaveState</span></a></span><span> </span><span id="local-6989586621679123820"><span class="annot"><span class="annottext">filename :: String
+</span><a href="#local-6989586621679123820"><span class="hs-identifier hs-var">filename</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; GameIO ()
+</span><a href="GameState.html#saveState"><span class="hs-identifier hs-var">saveState</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679123820"><span class="hs-identifier hs-var">filename</span></a></span><span> </span><span class="annot"><span class="annottext">GameIO () -&gt; GameIO Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-60"></span><span class="annot"><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var">executeAction</span></a></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="CommandParserText.html#Continue"><span class="hs-identifier hs-type">Continue</span></a></span><span> </span><span id="local-6989586621679123817"><span class="annot"><span class="annottext">filename :: String
+</span><a href="#local-6989586621679123817"><span class="hs-identifier hs-var">filename</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; GameIO ()
+</span><a href="GameState.html#loadState"><span class="hs-identifier hs-var">loadState</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679123817"><span class="hs-identifier hs-var">filename</span></a></span><span> </span><span class="annot"><span class="annottext">GameIO () -&gt; GameIO Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-61"></span><span class="annot"><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var">executeAction</span></a></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="annot"><a href="CommandParserText.html#Quit"><span class="hs-identifier hs-type">Quit</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span>
+</span><span id="line-62"></span><span class="annot"><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var">executeAction</span></a></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="annot"><a href="CommandParserText.html#Inventory"><span class="hs-identifier hs-type">Inventory</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GameIO Bool
+</span><a href="Items.html#showInventory"><span class="hs-identifier hs-var">showInventory</span></a></span><span>
+</span><span id="line-63"></span><span class="annot"><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var">executeAction</span></a></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="annot"><a href="CommandParserText.html#Look"><span class="hs-identifier hs-type">Look</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GameIO ()
+</span><a href="Moving.html#showCurrentRoom"><span class="hs-identifier hs-var">showCurrentRoom</span></a></span><span> </span><span class="annot"><span class="annottext">GameIO () -&gt; GameIO Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; GameIO Bool
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-64"></span><span class="annot"><a href="GameExe.html#executeAction"><span class="hs-identifier hs-var">executeAction</span></a></span><span> </span><span id="local-6989586621679123810"><span class="annot"><span class="annottext">actions :: ActionsMap
+</span><a href="#local-6989586621679123810"><span class="hs-identifier hs-var">actions</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="CommandParserText.html#Use"><span class="hs-identifier hs-type">Use</span></a></span><span> </span><span id="local-6989586621679123808"><span class="annot"><span class="annottext">item :: Text
+</span><a href="#local-6989586621679123808"><span class="hs-identifier hs-var">item</span></a></span></span><span> </span><span id="local-6989586621679123807"><span class="annot"><span class="annottext">input :: Text
+</span><a href="#local-6989586621679123807"><span class="hs-identifier hs-var">input</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; ActionsMap -&gt; GameIO Bool
+</span><a href="GameActions.html#useItem"><span class="hs-identifier hs-var">useItem</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123807"><span class="hs-identifier hs-var">input</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679123808"><span class="hs-identifier hs-var">item</span></a></span><span> </span><span class="annot"><span class="annottext">ActionsMap
+</span><a href="#local-6989586621679123810"><span class="hs-identifier hs-var">actions</span></a></span><span>
+</span><span id="line-65"></span><span>    </span></pre></body></html>

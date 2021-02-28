@@ -1,0 +1,20 @@
+{
+"use key":
+{
+	"itemName":"key",
+	"actionResult":{"tag":"ChangeRoomInventory","contents":{"tag":"ReplaceItem","contents":["box","sword"]}},
+	"conditions":{"roomName":"chamber","itemsInRoom":["box"]},"message":"You opended the box. At the bottom of the box lies a sword."
+}, 
+"use sword":
+{
+	"itemName":"sword",
+	"actionResult":{"tag":"ChangeRoomInventory","contents":{"tag":"RemoveItem","contents":"dragon"}},
+	"conditions":{"roomName":"cave","itemsInRoom":["dragon"]},"message":"You killed the dragon. Now you are safe."
+}, 
+"eat food":
+{
+	"itemName":"food",
+	"actionResult":{"tag":"ChangeInventory","contents":{"tag":"RemoveItem","contents":"food"}},
+	"conditions":{"roomName":"dead end","itemsInRoom":[]},"message":"It was delicious. You can go."
+}
+}
