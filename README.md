@@ -1,6 +1,6 @@
 # Adventure text game in Haskell 8.8.2
 
-Adventure text game is a console application which allows user to move between different rooms, take/leave found items and use them for specific actions. 
+Adventure text game is a console application which allows user to move between different rooms, take/leave found items and use them for specific actions with only text based commands. 
 
 
 1. To build project run *stack build* in the **adventure** folder. 
